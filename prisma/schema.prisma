@@ -1,0 +1,80 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  google_id     String?   @db.VarChar(100)
+  email         String    @unique
+  username      String    @unique
+  password      String?   @db.VarChar(100) // optional if google login
+  name          String    @db.VarChar(100)
+  role          String    @default("customer") @db.VarChar(100)
+  token         String?   @db.VarChar(100)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Service{
+  id              Int @id @default(autoincrement())
+  brand           String @db.VarChar(100)
+  model           String @db.VarChar(100)
+  customer_name   String @db.VarChar(100)
+  phone_number    String @db.VarChar(100)
+  status          String @default("pending") @db.VarChar(100)
+  
+  description     String? @db.Text
+  technician_note String? @db.Text
+
+  discount        Int @default(0) // % discount
+  total_price     Int @default(0)   // calculate total price
+
+  items           ServiceItem[] 
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("services")
+}
+
+model ServiceItem{
+  id            Int @id @default(autoincrement())
+  name          String @db.VarChar(100)
+  price         Int
+
+  service_id    Int // foreign key
+
+  service       Service @relation(fields: [service_id], references: [id], onDelete: Cascade)
+
+  @@map("service_items")
+}
+
+model Product{
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(100)
+  brand         String   @db.VarChar(100)
+  price         Int      @default(0)
+  cost_price    Int      @default(0)
+  category      String   @db.VarChar(100)
+  stock         Int      @default(0)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("products")
+}
