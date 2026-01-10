@@ -30,6 +30,12 @@ export type CreateUserWithGoogleRequest = {
   token: string;
 };
 
+export type UpdateUserRequest = {
+  email?: string;
+  name?: string;
+  password?: string;
+};
+
 export function toUserResponse(user: User): UserResponse {
   return {
     username: user.username,

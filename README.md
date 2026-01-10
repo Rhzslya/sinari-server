@@ -66,3 +66,17 @@ Before running this project, ensure you have the following installed:
    ```bash
    bun run dev
    ```
+
+
+**TESTING**
+
+```bash
+bun test
+```
+
+** To run specific test file **
+
+```bash
+bun test user.test.ts"
+```
+

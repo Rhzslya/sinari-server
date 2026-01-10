@@ -8,6 +8,7 @@ import {
   type CreateUserRequest,
   type CreateUserWithGoogleRequest,
   type LoginUserRequest,
+  type UpdateUserRequest,
   type UserResponse,
 } from "../model/user-model";
 import { GoogleAuth } from "../utils/google-auth";
@@ -96,6 +97,57 @@ export class UserService {
 
   static async get(user: User): Promise<UserResponse> {
     return toUserResponse(user);
+  }
+
+  static async update(
+    user: User,
+    request: UpdateUserRequest
+  ): Promise<UserResponse> {
+    const updateRequest = Validation.validate(UserValidation.UPDATE, request);
+
+    if (updateRequest.email) {
+      const isEmailCollision = await prismaClient.user.count({
+        where: {
+          email: updateRequest.email,
+        },
+      });
+
+      if (isEmailCollision != 0) {
+        throw new ResponseError(400, "Email already registered");
+      }
+
+      user.email = updateRequest.email!;
+    }
+
+    if (updateRequest.name) {
+      user.name = updateRequest.name;
+    }
+
+    if (updateRequest.password) {
+      updateRequest.password = await bcrypt.hash(updateRequest.password, 10);
+    }
+
+    const result = await prismaClient.user.update({
+      where: {
+        id: user.id,
+      },
+      data: updateRequest,
+    });
+
+    return toUserResponse(result);
+  }
+
+  static async logout(user: User): Promise<UserResponse> {
+    const result = await prismaClient.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        token: null,
+      },
+    });
+
+    return toUserResponse(result);
   }
 
   static async loginWithGoogle(

@@ -1,3 +1,4 @@
+import type { User } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { web } from "../application/web";
 import bcrypt from "bcrypt";
@@ -6,7 +7,6 @@ export class UserTest {
     await prismaClient.user.deleteMany({
       where: {
         username: "test",
-        email: "test@gmail.com",
       },
     });
   }
@@ -24,6 +24,19 @@ export class UserTest {
     });
   }
 
+  static async get(): Promise<User> {
+    const user = await prismaClient.user.findFirst({
+      where: {
+        username: "test",
+      },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+    return user;
+  }
+
   static async createGoogleDuplicate() {
     await prismaClient.user.create({
       data: {
@@ -31,6 +44,7 @@ export class UserTest {
         username: "test",
         name: "test",
         google_id: "123123123",
+        token: "test_token",
       },
     });
   }
@@ -55,7 +69,7 @@ export class TestRequest {
     const headers = new Headers();
     headers.append("Content-Type", "application/json");
     if (token) {
-      headers.append("X-API-TOKEN", token);
+      headers.append("Authorization", `Bearer ${token}`);
     }
 
     return web.request(url, {
@@ -72,6 +86,37 @@ export class TestRequest {
     return web.request(url, {
       method: "GET",
       headers: new Headers(headers),
+    });
+  }
+
+  static async update<T>(
+    url: string,
+    body: T,
+    token: string
+  ): Promise<Response> {
+    const headers = new Headers();
+    headers.append("Content-Type", "application/json");
+    if (token) {
+      headers.append("Authorization", `Bearer ${token}`);
+    }
+
+    return web.request(url, {
+      method: "PATCH",
+      headers: headers,
+      body: JSON.stringify(body),
+    });
+  }
+
+  static async delete(url: string, token: string): Promise<Response> {
+    const headers = new Headers();
+    headers.append("Content-Type", "application/json");
+    if (token) {
+      headers.append("Authorization", `Bearer ${token}`);
+    }
+
+    return web.request(url, {
+      method: "DELETE",
+      headers: headers,
     });
   }
 }

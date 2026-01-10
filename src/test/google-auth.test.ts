@@ -12,7 +12,7 @@ describe("POST /api/auth/google", () => {
     await UserTest.deleteGoogleDuplicate();
   });
 
-  it("should be register new user if email from google", async () => {
+  it.only("should be register new user if email from google", async () => {
     const googleSpy = spyOn(GoogleAuth, "verifyToken").mockResolvedValue({
       google_id: "123123123",
       email: "test123@gmail.com",
