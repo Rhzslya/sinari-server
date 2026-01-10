@@ -7,6 +7,7 @@ import type {
   UpdateUserRequest,
 } from "../model/user-model";
 import bcrypt from "bcrypt";
+import { prismaClient } from "../application/database";
 
 describe("POST /api/users", () => {
   // beforeEach(async () => {
@@ -118,7 +119,7 @@ describe("POST /api/auth/login", () => {
     // await UserTest.deleteGoogleDuplicate();
   });
 
-  it("should login user if email and password is correct", async () => {
+  it("should login user if email and password is correct and verify user", async () => {
     const requestBody: LoginUserRequest = {
       email: "test@gmail.com",
       password: "test",
@@ -158,6 +159,27 @@ describe("POST /api/auth/login", () => {
     expect(body.data.email).toBe("test@gmail.com");
     expect(body.data.username).toBe("test");
     expect(body.data.name).toBe("test");
+  });
+
+  it.only("should reject login if email is not verified", async () => {
+    await UserTest.unverify();
+
+    const requestBody: LoginUserRequest = {
+      email: "test@gmail.com",
+      password: "test",
+    };
+
+    const response = await TestRequest.post<LoginUserRequest>(
+      "/api/auth/login",
+      requestBody
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(403);
+    expect(body.errors).toBe("Please verify your email address first");
   });
 
   it("should reject login if username is wrong", async () => {
@@ -260,7 +282,7 @@ describe("GET /api/users/current", () => {
     expect(body.data.name).toBe("test");
   });
 
-  it.only("should reject user if token is invalid", async () => {
+  it("should reject user if token is invalid", async () => {
     const response = await TestRequest.get("/api/users/current", {
       Authorization: `Bearer wrong_token`,
     });
@@ -272,7 +294,7 @@ describe("GET /api/users/current", () => {
     expect(body.errors).toBeDefined();
   });
 
-  it.only("should reject request if no token provided", async () => {
+  it("should reject request if no token provided", async () => {
     const response = await TestRequest.get("/api/users/current");
 
     const body = await response.json();
@@ -351,7 +373,7 @@ describe("PATCH /api/users/current", () => {
     expect(await bcrypt.compare("test2", user.password!)).toBe(true);
   });
 
-  it.only("should reject update user password if current password is missing", async () => {
+  it("should reject update user password if current password is missing", async () => {
     const updateData: UpdateUserRequest = {
       password: "test2",
       // current_password: "",
@@ -467,7 +489,7 @@ describe("DELETE /api/auth/logout", () => {
     await UserTest.delete();
   });
 
-  it.only("should logout user", async () => {
+  it("should logout user", async () => {
     const response = await TestRequest.delete("/api/auth/logout", "test_token");
 
     const body = await response.json();
@@ -483,7 +505,7 @@ describe("DELETE /api/auth/logout", () => {
 
   it("should reject logout user if token is wrong", async () => {
     const response = await TestRequest.delete(
-      "/api/users/current",
+      "/api/auth/logout",
       "wrong_token"
     );
 
@@ -493,5 +515,71 @@ describe("DELETE /api/auth/logout", () => {
 
     expect(response.status).toBe(401);
     expect(body.errors).toBeDefined();
+  });
+});
+
+describe("Email Verification", () => {
+  beforeEach(async () => {
+    await UserTest.create();
+  });
+
+  afterEach(async () => {
+    await UserTest.delete();
+  });
+
+  it("should verify user", async () => {
+    await UserTest.delete();
+
+    const requestBody: CreateUserRequest = {
+      email: "test@gmail.com",
+      username: "test",
+      password: "test",
+      name: "test",
+    };
+
+    await TestRequest.post("/api/users", requestBody);
+
+    const userBefore = await prismaClient.user.findFirst({
+      where: {
+        username: "test",
+      },
+    });
+
+    const token = userBefore?.verify_token;
+
+    expect(token).toBeTruthy();
+
+    const response = await TestRequest.get(`/api/auth/verify?token=${token}`);
+
+    expect(response.status).toBe(200);
+
+    const userAfter = await prismaClient.user.findUnique({
+      where: { username: "test" },
+    });
+
+    expect(userAfter?.is_verified).toBe(true);
+    expect(userAfter?.verify_token).toBeNull();
+  });
+
+  it.only("should create user with unverified status ", async () => {
+    await UserTest.delete();
+
+    const requestBody: CreateUserRequest = {
+      email: "test@gmail.com",
+      username: "test",
+      password: "test",
+      name: "test",
+    };
+
+    await TestRequest.post("/api/users", requestBody);
+
+    const userInDb = await prismaClient.user.findUnique({
+      where: { username: "test" },
+    });
+
+    expect(userInDb).not.toBeNull();
+    expect(userInDb?.is_verified).toBe(false);
+    expect(userInDb?.verify_token).toBeDefined();
+    expect(userInDb?.verify_token).not.toBeNull();
   });
 });

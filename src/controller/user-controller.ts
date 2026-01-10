@@ -7,6 +7,7 @@ import type {
 } from "../model/user-model";
 import { UserService } from "../service/user-service";
 import type { ApplicationVariables } from "../type/hono-context";
+import { ResponseError } from "../error/response-error";
 
 export class UserController {
   static async register(c: Context) {
@@ -76,6 +77,22 @@ export class UserController {
       const request = (await c.req.json()) as CreateUserWithGoogleRequest;
 
       const response = await UserService.loginWithGoogle(request);
+
+      return c.json({ data: response });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async verify(c: Context) {
+    try {
+      const token = c.req.query("token");
+
+      if (!token) {
+        throw new ResponseError(400, "Token is required");
+      }
+
+      const response = await UserService.verify(token);
 
       return c.json({ data: response });
     } catch (error) {

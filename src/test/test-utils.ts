@@ -20,6 +20,8 @@ export class UserTest {
         password: password,
         name: "test",
         token: "test_token",
+        is_verified: true,
+        verify_token: null,
       },
     });
   }
@@ -55,6 +57,18 @@ export class UserTest {
         email: {
           in: ["test123@gmail.com", "test@gmail.com"],
         },
+      },
+    });
+  }
+
+  static async unverify() {
+    await prismaClient.user.update({
+      where: {
+        username: "test",
+      },
+      data: {
+        is_verified: false,
+        verify_token: null,
       },
     });
   }

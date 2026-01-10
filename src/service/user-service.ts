@@ -48,8 +48,14 @@ export class UserService {
 
     registerRequest.password = await bcrypt.hash(registerRequest.password, 10);
 
+    const verifyToken = uuid();
+
     const user = await prismaClient.user.create({
-      data: registerRequest,
+      data: {
+        ...registerRequest,
+        verify_token: verifyToken,
+        is_verified: false,
+      },
     });
 
     return toUserResponse(user);
@@ -67,7 +73,15 @@ export class UserService {
       },
     });
 
-    if (!user || !user.password) {
+    if (!user) {
+      throw new ResponseError(401, "Username or password is wrong");
+    }
+
+    if (!user.is_verified) {
+      throw new ResponseError(403, "Please verify your email address first");
+    }
+
+    if (!user.password) {
       throw new ResponseError(401, "Username or password is wrong");
     }
 
@@ -243,6 +257,8 @@ export class UserService {
             password: null,
             role: "customer",
             token: uuid(),
+            is_verified: true,
+            verify_token: null,
           },
         });
         isCreated = true;
@@ -283,5 +299,29 @@ export class UserService {
     }
 
     return user;
+  }
+
+  static async verify(token: string): Promise<boolean> {
+    const user = await prismaClient.user.findFirst({
+      where: {
+        verify_token: token,
+      },
+    });
+
+    if (!user) {
+      throw new ResponseError(404, "Invalid or expired verification token");
+    }
+
+    await prismaClient.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        is_verified: true,
+        verify_token: null,
+      },
+    });
+
+    return true;
   }
 }
