@@ -124,8 +124,25 @@ export class UserService {
     }
 
     if (updateRequest.password) {
+      if (user.password) {
+        if (!updateRequest.current_password) {
+          throw new ResponseError(400, "Please enter your current password");
+        }
+
+        const isCurrentPasswordCorrect = await bcrypt.compare(
+          updateRequest.current_password,
+          user.password
+        );
+
+        if (!isCurrentPasswordCorrect) {
+          throw new ResponseError(400, "Current password is wrong");
+        }
+      }
+
       updateRequest.password = await bcrypt.hash(updateRequest.password, 10);
     }
+
+    delete updateRequest.current_password;
 
     const result = await prismaClient.user.update({
       where: {

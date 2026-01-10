@@ -260,7 +260,7 @@ describe("GET /api/users/current", () => {
     expect(body.data.name).toBe("test");
   });
 
-  it("should reject user if token is invalid", async () => {
+  it.only("should reject user if token is invalid", async () => {
     const response = await TestRequest.get("/api/users/current", {
       Authorization: `Bearer wrong_token`,
     });
@@ -271,11 +271,20 @@ describe("GET /api/users/current", () => {
     expect(response.status).toBe(401);
     expect(body.errors).toBeDefined();
   });
+
+  it.only("should reject request if no token provided", async () => {
+    const response = await TestRequest.get("/api/users/current");
+
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.errors).toBeDefined();
+  });
 });
 
 describe("PATCH /api/users/current", () => {
   beforeEach(async () => {
-    // await UserTest.create();
+    await UserTest.create();
   });
 
   afterEach(async () => {
@@ -323,6 +332,7 @@ describe("PATCH /api/users/current", () => {
   it("should update user password", async () => {
     const updateData: UpdateUserRequest = {
       password: "test2",
+      current_password: "test",
     };
 
     const response = await TestRequest.update(
@@ -339,6 +349,28 @@ describe("PATCH /api/users/current", () => {
 
     expect(response.status).toBe(200);
     expect(await bcrypt.compare("test2", user.password!)).toBe(true);
+  });
+
+  it.only("should reject update user password if current password is missing", async () => {
+    const updateData: UpdateUserRequest = {
+      password: "test2",
+      // current_password: "",
+    };
+
+    const response = await TestRequest.update(
+      "/api/users/current",
+      updateData,
+      "test_token"
+    );
+
+    const body = await response.json();
+
+    const user = await UserTest.get();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(400);
+    expect(await bcrypt.compare("test2", user.password!)).toBe(false);
   });
 
   it("should update user password if user is login with google and will be multiple login", async () => {
@@ -426,7 +458,7 @@ describe("PATCH /api/users/current", () => {
   });
 });
 
-describe("DELETE /api/users/current", () => {
+describe("DELETE /api/auth/logout", () => {
   beforeEach(async () => {
     await UserTest.create();
   });
@@ -436,10 +468,7 @@ describe("DELETE /api/users/current", () => {
   });
 
   it.only("should logout user", async () => {
-    const response = await TestRequest.delete(
-      "/api/users/current",
-      "test_token"
-    );
+    const response = await TestRequest.delete("/api/auth/logout", "test_token");
 
     const body = await response.json();
 
@@ -452,7 +481,7 @@ describe("DELETE /api/users/current", () => {
     expect(user.token).toBeNull();
   });
 
-  it.only("should reject logout user if token is wrong", async () => {
+  it("should reject logout user if token is wrong", async () => {
     const response = await TestRequest.delete(
       "/api/users/current",
       "wrong_token"

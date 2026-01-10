@@ -34,6 +34,7 @@ export type UpdateUserRequest = {
   email?: string;
   name?: string;
   password?: string;
+  current_password?: string;
 };
 
 export function toUserResponse(user: User): UserResponse {
