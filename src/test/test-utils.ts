@@ -84,7 +84,19 @@ export class UserTest {
   }
 }
 
-export class TestRequest {
+export class ServiceTest {
+  static async deleteAll() {
+    await prismaClient.service.deleteMany({
+      where: {
+        brand: {
+          contains: "test",
+        },
+      },
+    });
+  }
+}
+
+export class UserTestRequest {
   static async post<T>(
     url: string,
     body: T,
@@ -141,6 +153,26 @@ export class TestRequest {
     return web.request(url, {
       method: "DELETE",
       headers: headers,
+    });
+  }
+}
+
+export class ServiceTestRequest {
+  static async post<T>(
+    url: string,
+    body: T,
+    token?: string
+  ): Promise<Response> {
+    const headers = new Headers();
+    headers.append("Content-Type", "application/json");
+    if (token) {
+      headers.append("Authorization", `Bearer ${token}`);
+    }
+
+    return web.request(url, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(body),
     });
   }
 }
