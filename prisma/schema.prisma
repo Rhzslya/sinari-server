@@ -16,7 +16,7 @@ datasource db {
 
 model User {
   id            Int       @id @default(autoincrement())
-  google_id     String?   @db.VarChar(100)
+  google_id     String?   @unique @db.VarChar(100)
   email         String    @unique
   username      String    @unique
   password      String?   @db.VarChar(100) // optional if google login

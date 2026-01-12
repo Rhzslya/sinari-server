@@ -12,7 +12,7 @@ describe("POST /api/auth/google", () => {
     await UserTest.deleteGoogleDuplicate();
   });
 
-  it.only("should be register new user if email from google", async () => {
+  it("should be register new user if email from google", async () => {
     const googleSpy = spyOn(GoogleAuth, "verifyToken").mockResolvedValue({
       google_id: "123123123",
       email: "test123@gmail.com",
@@ -27,6 +27,11 @@ describe("POST /api/auth/google", () => {
     logger.debug(body);
 
     expect(response.status).toBe(200);
+
+    const userInDb = await UserTest.findByEmail("test123@gmail.com");
+
+    expect(userInDb).not.toBeNull();
+    expect(userInDb!.is_verified).toBe(true);
 
     expect(body.data.email).toBe("test123@gmail.com");
     expect(body.data.name).toBe("test");
@@ -66,7 +71,7 @@ describe("POST /api/auth/google", () => {
     await UserTest.createGoogleDuplicate();
 
     const googleSpy = spyOn(GoogleAuth, "verifyToken").mockResolvedValue({
-      google_id: "123123123",
+      google_id: "99999",
       email: "test@gmail.com",
       name: "test",
     });
@@ -112,20 +117,16 @@ describe("POST /api/auth/google", () => {
   });
 
   it("should reject login if google token is invalid", async () => {
-    const googleSpy = spyOn(GoogleAuth, "verifyToken").mockResolvedValue({
-      google_id: "123123123",
-      email: "test123@gmail.com",
-      name: "test",
-    });
+    const googleSpy = spyOn(GoogleAuth, "verifyToken").mockResolvedValue(null);
 
     const response = await TestRequest.post("/api/auth/google", {
-      token: "",
+      token: "wrong_token",
     });
     const body = await response.json();
 
     logger.debug(body);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(401);
     expect(body.errors).toBeDefined();
 
     googleSpy.mockRestore();
@@ -137,6 +138,28 @@ describe("POST /api/auth/google", () => {
     const googleSpy = spyOn(GoogleAuth, "verifyToken").mockResolvedValue({
       google_id: "1233123123",
       email: "test123@gmail.com",
+      name: "test",
+    });
+
+    const response = await TestRequest.post("/api/auth/google", {
+      token: "TEST_TOKEN",
+    });
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(409);
+    expect(body.errors).toBeDefined();
+
+    googleSpy.mockRestore();
+  });
+
+  it("should reject login if google id is already linked to another user", async () => {
+    await UserTest.createGoogleDuplicate();
+
+    const googleSpy = spyOn(GoogleAuth, "verifyToken").mockResolvedValue({
+      google_id: "123123123",
+      email: "test1234@gmail.com",
       name: "test",
     });
 

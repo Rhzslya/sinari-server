@@ -6,7 +6,9 @@ export class UserTest {
   static async delete() {
     await prismaClient.user.deleteMany({
       where: {
-        username: "test",
+        username: {
+          contains: "test",
+        },
       },
     });
   }
@@ -69,6 +71,14 @@ export class UserTest {
       data: {
         is_verified: false,
         verify_token: null,
+      },
+    });
+  }
+
+  static async findByEmail(email: string): Promise<User | null> {
+    return await prismaClient.user.findUnique({
+      where: {
+        email: email,
       },
     });
   }

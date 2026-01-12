@@ -161,7 +161,7 @@ describe("POST /api/auth/login", () => {
     expect(body.data.name).toBe("test");
   });
 
-  it.only("should reject login if email is not verified", async () => {
+  it("should reject login if email is not verified", async () => {
     await UserTest.unverify();
 
     const requestBody: LoginUserRequest = {
@@ -396,6 +396,8 @@ describe("PATCH /api/users/current", () => {
   });
 
   it("should update user password if user is login with google and will be multiple login", async () => {
+    await UserTest.delete();
+
     await UserTest.createGoogleDuplicate();
 
     const updateData: UpdateUserRequest = {
@@ -561,7 +563,7 @@ describe("Email Verification", () => {
     expect(userAfter?.verify_token).toBeNull();
   });
 
-  it.only("should create user with unverified status ", async () => {
+  it("should create user with unverified status ", async () => {
     await UserTest.delete();
 
     const requestBody: CreateUserRequest = {

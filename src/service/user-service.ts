@@ -269,6 +269,19 @@ export class UserService {
             const target = error.meta?.target;
             const message = error.message;
 
+            // CHECK IF ERROR IS ABOUT GOOGLE_ID COLLISION
+            const isGoogleIdCollision =
+              (Array.isArray(target) && target.includes("google_id")) ||
+              (typeof target === "string" && target.includes("google_id")) ||
+              message.includes("users_google_id_key");
+
+            if (isGoogleIdCollision) {
+              throw new ResponseError(
+                409,
+                "This Google Account is already linked to another user."
+              );
+            }
+
             // CHECK IF ERROR IS ABOUT USERNAME COLLISION
             const isUsernameCollision =
               (Array.isArray(target) && target.includes("username")) ||
