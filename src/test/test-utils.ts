@@ -28,6 +28,22 @@ export class UserTest {
     });
   }
 
+  static async createAdmin() {
+    const password = await bcrypt.hash("test", 10);
+    await prismaClient.user.create({
+      data: {
+        email: "test@gmail.com",
+        username: "test",
+        password: password,
+        name: "test",
+        token: "test_token",
+        is_verified: true,
+        verify_token: null,
+        role: "admin",
+      },
+    });
+  }
+
   static async get(): Promise<User> {
     const user = await prismaClient.user.findFirst({
       where: {
@@ -49,6 +65,23 @@ export class UserTest {
         name: "test",
         google_id: "123123123",
         token: "test_token",
+      },
+    });
+  }
+
+  static async createAdminGoogle() {
+    const password = await bcrypt.hash("test", 10);
+    await prismaClient.user.create({
+      data: {
+        google_id: "123123123",
+        email: "test@gmail.com",
+        username: "test",
+        password: password,
+        name: "test",
+        token: "test_token",
+        is_verified: true,
+        verify_token: null,
+        role: "admin",
       },
     });
   }
@@ -91,6 +124,31 @@ export class ServiceTest {
         brand: {
           contains: "test",
         },
+      },
+    });
+  }
+
+  static async create() {
+    return await prismaClient.service.create({
+      data: {
+        brand: "test",
+        model: "test",
+        customer_name: "test",
+        phone_number: "08123123123",
+        description: "test",
+        technician_note: "test",
+        status: "pending",
+        service_list: {
+          create: [
+            {
+              name: "test",
+              price: 1000,
+            },
+          ],
+        },
+        discount: 0,
+        total_price: 1000,
+        tracking_token: "test_token",
       },
     });
   }
@@ -172,6 +230,21 @@ export class ServiceTestRequest {
     return web.request(url, {
       method: "POST",
       headers: headers,
+      body: JSON.stringify(body),
+    });
+  }
+
+  static async update<T>(
+    url: string,
+    headers: Record<string, string>,
+    body: T
+  ): Promise<Response> {
+    return web.request(url, {
+      method: "PATCH",
+      headers: new Headers({
+        ...headers,
+        "Content-Type": "application/json",
+      }),
       body: JSON.stringify(body),
     });
   }

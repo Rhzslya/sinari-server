@@ -18,4 +18,27 @@ export class RepairValidation {
       .min(1, { message: "Service list must have at least 1 service" }),
     discount: z.number().min(0).max(100).optional(),
   });
+
+  static readonly UPDATE = z.object({
+    id: z.number().positive(),
+    status: z
+      .enum(["pending", "process", "finished", "cancelled", "taken"])
+      .optional(),
+
+    technician_note: z.string().optional(),
+    discount: z.number().min(0).max(100).optional(),
+    brand: z.string().min(1).max(100).optional(),
+    model: z.string().min(1).max(100).optional(),
+    customer_name: z.string().min(1).max(100).optional(),
+    phone_number: z.string().min(1).max(20).optional(),
+    description: z.string().max(255).optional(),
+    service_list: z
+      .array(
+        z.object({
+          name: z.string().min(1),
+          price: z.number().positive(),
+        })
+      )
+      .optional(),
+  });
 }

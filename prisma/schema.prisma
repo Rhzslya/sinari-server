@@ -49,6 +49,8 @@ model Service{
 
   service_list    ServiceItem[] 
 
+  tracking_token  String @unique @default(uuid()) @db.VarChar(100)
+
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
