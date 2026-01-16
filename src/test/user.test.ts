@@ -1,5 +1,5 @@
 import { describe, afterEach, beforeEach, it, expect } from "bun:test";
-import { UserTestRequest, UserTest } from "./test-utils";
+import { TestRequest, UserTest } from "./test-utils";
 import { logger } from "../application/logging";
 import type {
   CreateUserRequest,
@@ -26,7 +26,7 @@ describe("POST /api/users", () => {
       name: "test",
     };
 
-    const response = await UserTestRequest.post<CreateUserRequest>(
+    const response = await TestRequest.post<CreateUserRequest>(
       "/api/users",
       requestBody
     );
@@ -49,7 +49,7 @@ describe("POST /api/users", () => {
       name: "",
     };
 
-    const response = await UserTestRequest.post<CreateUserRequest>(
+    const response = await TestRequest.post<CreateUserRequest>(
       "/api/users",
       requestBody
     );
@@ -72,7 +72,7 @@ describe("POST /api/users", () => {
       name: "test",
     };
 
-    const response = await UserTestRequest.post<CreateUserRequest>(
+    const response = await TestRequest.post<CreateUserRequest>(
       "/api/users",
       requestBody
     );
@@ -95,7 +95,7 @@ describe("POST /api/users", () => {
       name: "test",
     };
 
-    const response = await UserTestRequest.post<CreateUserRequest>(
+    const response = await TestRequest.post<CreateUserRequest>(
       "/api/users",
       requestBody
     );
@@ -125,7 +125,7 @@ describe("POST /api/auth/login", () => {
       password: "test",
     };
 
-    const response = await UserTestRequest.post<LoginUserRequest>(
+    const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
       requestBody
     );
@@ -146,7 +146,7 @@ describe("POST /api/auth/login", () => {
       password: "test",
     };
 
-    const response = await UserTestRequest.post<LoginUserRequest>(
+    const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
       requestBody
     );
@@ -169,7 +169,7 @@ describe("POST /api/auth/login", () => {
       password: "test",
     };
 
-    const response = await UserTestRequest.post<LoginUserRequest>(
+    const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
       requestBody
     );
@@ -188,7 +188,7 @@ describe("POST /api/auth/login", () => {
       password: "test",
     };
 
-    const response = await UserTestRequest.post<LoginUserRequest>(
+    const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
       requestBody
     );
@@ -207,7 +207,7 @@ describe("POST /api/auth/login", () => {
       password: "test",
     };
 
-    const response = await UserTestRequest.post<LoginUserRequest>(
+    const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
       requestBody
     );
@@ -226,7 +226,7 @@ describe("POST /api/auth/login", () => {
       password: "wrong",
     };
 
-    const response = await UserTestRequest.post<LoginUserRequest>(
+    const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
       requestBody
     );
@@ -245,7 +245,7 @@ describe("POST /api/auth/login", () => {
       password: "",
     };
 
-    const response = await UserTestRequest.post<LoginUserRequest>(
+    const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
       requestBody
     );
@@ -269,9 +269,7 @@ describe("GET /api/users/current", () => {
   });
 
   it("should get current user", async () => {
-    const response = await UserTestRequest.get("/api/users/current", {
-      Authorization: `Bearer test_token`,
-    });
+    const response = await TestRequest.get("/api/users/current", "test_token");
     const body = await response.json();
 
     logger.debug(body);
@@ -283,9 +281,7 @@ describe("GET /api/users/current", () => {
   });
 
   it("should reject user if token is invalid", async () => {
-    const response = await UserTestRequest.get("/api/users/current", {
-      Authorization: `Bearer wrong_token`,
-    });
+    const response = await TestRequest.get("/api/users/current", "wrong_token");
     const body = await response.json();
 
     logger.debug(body);
@@ -295,7 +291,7 @@ describe("GET /api/users/current", () => {
   });
 
   it("should reject request if no token provided", async () => {
-    const response = await UserTestRequest.get("/api/users/current");
+    const response = await TestRequest.get("/api/users/current");
 
     const body = await response.json();
 
@@ -313,12 +309,12 @@ describe("PATCH /api/users/current", () => {
     await UserTest.delete();
   });
 
-  it("should update user name", async () => {
+  it("should patch user name", async () => {
     const updateData: UpdateUserRequest = {
       name: "test2",
     };
 
-    const response = await UserTestRequest.update(
+    const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
       "test_token"
@@ -332,12 +328,12 @@ describe("PATCH /api/users/current", () => {
     expect(body.data.name).toBe("test2");
   });
 
-  it("should update user email if email not exists in database", async () => {
+  it("should patch user email if email not exists in database", async () => {
     const updateData: UpdateUserRequest = {
       email: "test2@gmail.com",
     };
 
-    const response = await UserTestRequest.update(
+    const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
       "test_token"
@@ -351,13 +347,13 @@ describe("PATCH /api/users/current", () => {
     expect(body.data.email).toBe("test2@gmail.com");
   });
 
-  it("should update user password", async () => {
+  it("should patch user password", async () => {
     const updateData: UpdateUserRequest = {
       password: "test2",
       current_password: "test",
     };
 
-    const response = await UserTestRequest.update(
+    const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
       "test_token"
@@ -373,13 +369,13 @@ describe("PATCH /api/users/current", () => {
     expect(await bcrypt.compare("test2", user.password!)).toBe(true);
   });
 
-  it("should reject update user password if current password is missing", async () => {
+  it("should reject patch user password if current password is missing", async () => {
     const updateData: UpdateUserRequest = {
       password: "test2",
       // current_password: "",
     };
 
-    const response = await UserTestRequest.update(
+    const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
       "test_token"
@@ -395,7 +391,7 @@ describe("PATCH /api/users/current", () => {
     expect(await bcrypt.compare("test2", user.password!)).toBe(false);
   });
 
-  it("should update user password if user is login with google and will be multiple login", async () => {
+  it("should patch user password if user is login with google and will be multiple login", async () => {
     await UserTest.delete();
 
     await UserTest.createGoogleDuplicate();
@@ -404,7 +400,7 @@ describe("PATCH /api/users/current", () => {
       password: "test2",
     };
 
-    const response = await UserTestRequest.update(
+    const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
       "test_token"
@@ -420,14 +416,14 @@ describe("PATCH /api/users/current", () => {
     expect(await bcrypt.compare("test2", user.password!)).toBe(true);
   });
 
-  it("should reject update if data is null", async () => {
+  it("should reject patch if data is null", async () => {
     const updateData: UpdateUserRequest = {
       email: "",
       password: "",
       name: "",
     };
 
-    const response = await UserTestRequest.update(
+    const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
       "test_token"
@@ -441,14 +437,14 @@ describe("PATCH /api/users/current", () => {
     expect(body.errors).toBeDefined();
   });
 
-  it("should reject update token is wrong", async () => {
+  it("should reject patch token is wrong", async () => {
     const updateData: UpdateUserRequest = {
       email: "",
       password: "",
       name: "",
     };
 
-    const response = await UserTestRequest.update(
+    const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
       "wrong_token"
@@ -462,12 +458,12 @@ describe("PATCH /api/users/current", () => {
     expect(body.errors).toBeDefined();
   });
 
-  it("should reject update user email if email is exists in database", async () => {
+  it("should reject patch user email if email is exists in database", async () => {
     const updateData: UpdateUserRequest = {
       email: "test@gmail.com",
     };
 
-    const response = await UserTestRequest.update(
+    const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
       "test_token"
@@ -492,10 +488,7 @@ describe("DELETE /api/auth/logout", () => {
   });
 
   it("should logout user", async () => {
-    const response = await UserTestRequest.delete(
-      "/api/auth/logout",
-      "test_token"
-    );
+    const response = await TestRequest.delete("/api/auth/logout", "test_token");
 
     const body = await response.json();
 
@@ -509,7 +502,7 @@ describe("DELETE /api/auth/logout", () => {
   });
 
   it("should reject logout user if token is wrong", async () => {
-    const response = await UserTestRequest.delete(
+    const response = await TestRequest.delete(
       "/api/auth/logout",
       "wrong_token"
     );
@@ -542,7 +535,7 @@ describe("Email Verification", () => {
       name: "test",
     };
 
-    await UserTestRequest.post("/api/users", requestBody);
+    await TestRequest.post("/api/users", requestBody);
 
     const userBefore = await prismaClient.user.findFirst({
       where: {
@@ -554,9 +547,7 @@ describe("Email Verification", () => {
 
     expect(token).toBeTruthy();
 
-    const response = await UserTestRequest.get(
-      `/api/auth/verify?token=${token}`
-    );
+    const response = await TestRequest.get(`/api/auth/verify?token=${token}`);
 
     expect(response.status).toBe(200);
 
@@ -578,7 +569,7 @@ describe("Email Verification", () => {
       name: "test",
     };
 
-    await UserTestRequest.post("/api/users", requestBody);
+    await TestRequest.post("/api/users", requestBody);
 
     const userInDb = await prismaClient.user.findUnique({
       where: { username: "test" },

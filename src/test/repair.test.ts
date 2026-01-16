@@ -1,10 +1,5 @@
 import { describe, afterEach, beforeEach, it, expect } from "bun:test";
-import {
-  ServiceTest,
-  ServiceTestRequest,
-  UserTest,
-  UserTestRequest,
-} from "./test-utils";
+import { ServiceTest, TestRequest, UserTest } from "./test-utils";
 import type {
   CreateServiceRequest,
   UpdateServiceRequest,
@@ -40,7 +35,7 @@ describe("POST /api/services", () => {
       ],
     };
 
-    const response = await UserTestRequest.post<CreateServiceRequest>(
+    const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
       "test_token"
@@ -79,7 +74,7 @@ describe("POST /api/services", () => {
       ],
     };
 
-    const response = await UserTestRequest.post<CreateServiceRequest>(
+    const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
       "test_token"
@@ -122,7 +117,7 @@ describe("POST /api/services", () => {
       ],
     };
 
-    const response = await UserTestRequest.post<CreateServiceRequest>(
+    const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
       "test_token"
@@ -171,7 +166,7 @@ describe("POST /api/services", () => {
       discount: 10,
     };
 
-    const response = await UserTestRequest.post<CreateServiceRequest>(
+    const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
       "test_token"
@@ -208,7 +203,7 @@ describe("POST /api/services", () => {
       service_list: [{ name: "Fix", price: 1000 }],
     };
 
-    const response = await UserTestRequest.post<CreateServiceRequest>(
+    const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
       "test_token"
@@ -219,7 +214,7 @@ describe("POST /api/services", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.discount).toBe(0);
-    expect(body.data.status).toBe("pending");
+    expect(body.data.status).toBe("PENDING");
     expect(body.data.description).toBeNull();
     expect(body.data.technician_note).toBeNull();
   });
@@ -237,7 +232,7 @@ describe("POST /api/services", () => {
       service_list: [],
     };
 
-    const response = await UserTestRequest.post<CreateServiceRequest>(
+    const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
       "test_token"
@@ -264,7 +259,7 @@ describe("POST /api/services", () => {
       service_list: [],
     };
 
-    const response = await UserTestRequest.post<CreateServiceRequest>(
+    const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
       "wrong_token"
@@ -290,7 +285,7 @@ describe("POST /api/services", () => {
       discount: 150,
     };
 
-    const response = await UserTestRequest.post<CreateServiceRequest>(
+    const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
       "test_token"
@@ -319,7 +314,7 @@ describe("POST /api/services", () => {
       ],
     };
 
-    const response = await UserTestRequest.post<CreateServiceRequest>(
+    const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
       "test_token"
@@ -341,7 +336,7 @@ describe("POST /api/services", () => {
       service_list: [{ name: "Fix", price: 1000 }],
     };
 
-    const response = await UserTestRequest.post<CreateServiceRequest>(
+    const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
       "test_token"
@@ -370,7 +365,7 @@ describe("POST /api/services", () => {
       ],
     };
 
-    const response = await UserTestRequest.post<CreateServiceRequest>(
+    const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
       "test_token"
@@ -393,9 +388,10 @@ describe("GET /api/services/:id", () => {
 
     const service = await ServiceTest.create();
 
-    const response = await UserTestRequest.get(`/api/services/${service.id}`, {
-      Authorization: `Bearer test_token`,
-    });
+    const response = await TestRequest.get(
+      `/api/services/${service.id}`,
+      "test_token"
+    );
 
     const body = await response.json();
 
@@ -410,9 +406,10 @@ describe("GET /api/services/:id", () => {
 
     const service = await ServiceTest.create();
 
-    const response = await UserTestRequest.get(`/api/services/${service.id}`, {
-      Authorization: `Bearer test_token`,
-    });
+    const response = await TestRequest.get(
+      `/api/services/${service.id}`,
+      "test_token"
+    );
 
     const body = await response.json();
 
@@ -427,9 +424,10 @@ describe("GET /api/services/:id", () => {
 
     const service = await ServiceTest.create();
 
-    const response = await UserTestRequest.get(`/api/services/${service.id}`, {
-      Authorization: `Bearer test_token`,
-    });
+    const response = await TestRequest.get(
+      `/api/services/${service.id}`,
+      "test_token"
+    );
 
     const body = await response.json();
 
@@ -444,11 +442,9 @@ describe("GET /api/services/:id", () => {
 
     const service = await ServiceTest.create();
 
-    const response = await UserTestRequest.get(
+    const response = await TestRequest.get(
       `/api/services/${service.id + 1}`,
-      {
-        Authorization: `Bearer test_token`,
-      }
+      "test_token"
     );
 
     const body = await response.json();
@@ -468,7 +464,7 @@ describe("GET /api/public/services/track/:token", () => {
   it("should get service by token", async () => {
     const service = await ServiceTest.create();
 
-    const response = await UserTestRequest.get(
+    const response = await TestRequest.get(
       `/api/public/services/track/${service.tracking_token}`
     );
 
@@ -482,7 +478,7 @@ describe("GET /api/public/services/track/:token", () => {
   it("should reject service if token is invalid", async () => {
     const service = await ServiceTest.create();
 
-    const response = await UserTestRequest.get(
+    const response = await TestRequest.get(
       `/api/public/services/track/${service.tracking_token + "wrong"}`
     );
 
@@ -500,21 +496,21 @@ describe("PATCH /api/services/:id", () => {
     await UserTest.delete();
   });
 
-  it("should update service if user is admin", async () => {
+  it("should patch service if user is admin", async () => {
     await UserTest.createAdmin();
 
     const service = await ServiceTest.create();
 
     const requestBody: UpdateServiceRequest = {
       id: service.id,
-      status: "process",
+      status: "PROCESS",
       technician_note: "Fixing...",
     };
 
-    const response = await ServiceTestRequest.update<UpdateServiceRequest>(
+    const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id}`,
-      { Authorization: `Bearer test_token` },
-      requestBody
+      requestBody,
+      "test_token"
     );
 
     const body = await response.json();
@@ -522,11 +518,11 @@ describe("PATCH /api/services/:id", () => {
     logger.debug(body);
 
     expect(response.status).toBe(200);
-    expect(body.data.status).toBe("process");
+    expect(body.data.status).toBe("PROCESS");
     expect(body.data.technician_note).toBe("Fixing...");
   });
 
-  it("should update service list and recalculate total price", async () => {
+  it("should patch service list and recalculate total price", async () => {
     await UserTest.createAdmin();
 
     const service = await ServiceTest.create();
@@ -545,10 +541,10 @@ describe("PATCH /api/services/:id", () => {
       ],
     };
 
-    const response = await ServiceTestRequest.update<UpdateServiceRequest>(
+    const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id}`,
-      { Authorization: `Bearer test_token` },
-      requestBody
+      requestBody,
+      "test_token"
     );
 
     const body = await response.json();
@@ -561,21 +557,21 @@ describe("PATCH /api/services/:id", () => {
     expect(body.data.total_price).toBe(11000);
   });
 
-  it("should update service if user is admin google", async () => {
+  it("should patch service if user is admin google", async () => {
     await UserTest.createAdminGoogle();
 
     const service = await ServiceTest.create();
 
     const requestBody: UpdateServiceRequest = {
       id: service.id,
-      status: "process",
+      status: "PROCESS",
       technician_note: "Fixing...",
     };
 
-    const response = await ServiceTestRequest.update<UpdateServiceRequest>(
+    const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id}`,
-      { Authorization: `Bearer test_token` },
-      requestBody
+      requestBody,
+      "test_token"
     );
 
     const body = await response.json();
@@ -583,25 +579,25 @@ describe("PATCH /api/services/:id", () => {
     logger.debug(body);
 
     expect(response.status).toBe(200);
-    expect(body.data.status).toBe("process");
+    expect(body.data.status).toBe("PROCESS");
     expect(body.data.technician_note).toBe("Fixing...");
   });
 
-  it("should reject update service if user is not admin", async () => {
+  it("should reject patch service if user is not admin", async () => {
     await UserTest.create();
 
     const service = await ServiceTest.create();
 
     const requestBody: UpdateServiceRequest = {
       id: service.id,
-      status: "process",
+      status: "PROCESS",
       technician_note: "Fixing...",
     };
 
-    const response = await ServiceTestRequest.update<UpdateServiceRequest>(
+    const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id}`,
-      { Authorization: `Bearer test_token` },
-      requestBody
+      requestBody,
+      "test_token"
     );
 
     const body = await response.json();
@@ -612,21 +608,21 @@ describe("PATCH /api/services/:id", () => {
     expect(body.errors).toBeDefined();
   });
 
-  it("should reject update service if service id is invalid", async () => {
+  it("should reject patch service if service id is invalid", async () => {
     await UserTest.createAdmin();
 
     const service = await ServiceTest.create();
 
     const requestBody: UpdateServiceRequest = {
       id: service.id,
-      status: "process",
+      status: "PROCESS",
       technician_note: "Fixing...",
     };
 
-    const response = await ServiceTestRequest.update<UpdateServiceRequest>(
+    const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id + 10}`,
-      { Authorization: `Bearer test_token` },
-      requestBody
+      requestBody,
+      "test_token"
     );
 
     const body = await response.json();
@@ -649,9 +645,9 @@ describe("DELETE /api/services/:id", () => {
 
     const service = await ServiceTest.create();
 
-    const response = await ServiceTestRequest.delete(
+    const response = await TestRequest.delete(
       `/api/services/${service.id}`,
-      { Authorization: `Bearer test_token` }
+      "test_token"
     );
 
     const body = await response.json();
@@ -674,9 +670,9 @@ describe("DELETE /api/services/:id", () => {
 
     const service = await ServiceTest.create();
 
-    const response = await ServiceTestRequest.delete(
+    const response = await TestRequest.delete(
       `/api/services/${service.id}`,
-      { Authorization: `Bearer test_token` }
+      "test_token"
     );
 
     const body = await response.json();
@@ -699,9 +695,9 @@ describe("DELETE /api/services/:id", () => {
 
     const service = await ServiceTest.create();
 
-    const response = await ServiceTestRequest.delete(
+    const response = await TestRequest.delete(
       `/api/services/${service.id}`,
-      { Authorization: `Bearer test_token` }
+      "test_token"
     );
 
     const body = await response.json();
@@ -717,9 +713,9 @@ describe("DELETE /api/services/:id", () => {
 
     const service = await ServiceTest.create();
 
-    const response = await ServiceTestRequest.delete(
+    const response = await TestRequest.delete(
       `/api/services/${service.id + 1}`,
-      { Authorization: `Bearer test_token` }
+      "test_token"
     );
 
     const body = await response.json();
@@ -735,9 +731,9 @@ describe("DELETE /api/services/:id", () => {
 
     const service = await ServiceTest.create();
 
-    const response = await ServiceTestRequest.delete(
+    const response = await TestRequest.delete(
       `/api/services/${service.id + 1}`,
-      { Authorization: `Bearer wrong_token` }
+      "wrong_token"
     );
 
     const body = await response.json();
@@ -760,9 +756,7 @@ describe("GET /api/services", () => {
 
     await ServiceTest.create();
 
-    const response = await ServiceTestRequest.get("/api/services", {
-      Authorization: `Bearer test_token`,
-    });
+    const response = await TestRequest.get("/api/services", "test_token");
 
     const body = await response.json();
 
@@ -780,9 +774,7 @@ describe("GET /api/services", () => {
 
     await ServiceTest.create();
 
-    const response = await ServiceTestRequest.get("/api/services", {
-      Authorization: `Bearer test_token`,
-    });
+    const response = await TestRequest.get("/api/services", "test_token");
 
     const body = await response.json();
 
@@ -805,9 +797,9 @@ describe("GET /api/services", () => {
       size: "10",
     }).toString();
 
-    const response = await ServiceTestRequest.get(
+    const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      { Authorization: `Bearer test_token` }
+      "test_token"
     );
 
     const body = await response.json();
@@ -830,9 +822,9 @@ describe("GET /api/services", () => {
       size: "10",
     }).toString();
 
-    const response = await ServiceTestRequest.get(
+    const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      { Authorization: `Bearer test_token` }
+      "test_token"
     );
 
     const body = await response.json();
@@ -855,9 +847,9 @@ describe("GET /api/services", () => {
       size: "10",
     }).toString();
 
-    const response = await ServiceTestRequest.get(
+    const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      { Authorization: `Bearer test_token` }
+      "test_token"
     );
 
     const body = await response.json();
@@ -880,9 +872,9 @@ describe("GET /api/services", () => {
       size: "10",
     }).toString();
 
-    const response = await ServiceTestRequest.get(
+    const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      { Authorization: `Bearer test_token` }
+      "test_token"
     );
 
     const body = await response.json();
@@ -905,9 +897,9 @@ describe("GET /api/services", () => {
       size: "10",
     }).toString();
 
-    const response = await ServiceTestRequest.get(
+    const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      { Authorization: `Bearer test_token` }
+      "test_token"
     );
 
     const body = await response.json();
@@ -929,9 +921,9 @@ describe("GET /api/services", () => {
       size: "10",
     }).toString();
 
-    const response = await ServiceTestRequest.get(
+    const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      { Authorization: `Bearer test_token` }
+      "test_token"
     );
 
     const body = await response.json();
@@ -954,9 +946,9 @@ describe("GET /api/services", () => {
       size: "10",
     }).toString();
 
-    const response = await ServiceTestRequest.get(
+    const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      { Authorization: `Bearer test_token` }
+      "test_token"
     );
 
     const body = await response.json();
@@ -979,9 +971,9 @@ describe("GET /api/services", () => {
       size: "10",
     }).toString();
 
-    const response = await ServiceTestRequest.get(
+    const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      { Authorization: `Bearer test_token` }
+      "test_token"
     );
 
     const body = await response.json();

@@ -91,12 +91,16 @@ export class ServiceController {
     try {
       const user = c.var.user as User;
 
+      const rawStatus = c.req.query("status");
+
       const request: SearchServiceRequest = {
         brand: c.req.query("brand"),
         model: c.req.query("model"),
         customer_name: c.req.query("customer_name"),
         phone_number: c.req.query("phone_number"),
-        status: c.req.query("status") as ServiceStatus | undefined,
+        status: rawStatus
+          ? (rawStatus.toUpperCase() as ServiceStatus)
+          : undefined,
         page: c.req.query("page") ? Number(c.req.query("page")) : 1,
         size: c.req.query("size") ? Number(c.req.query("size")) : 10,
       };

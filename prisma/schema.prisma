@@ -39,8 +39,8 @@ model Service{
   model           String @db.VarChar(100)
   customer_name   String @db.VarChar(100)
   phone_number    String @db.VarChar(100)
-  status          ServiceStatus @default(pending)
-    
+  status          ServiceStatus @default(PENDING)
+
   description     String? @db.Text
   technician_note String? @db.Text
 
@@ -70,24 +70,59 @@ model ServiceItem{
 }
 
 enum ServiceStatus {
-  pending
-  process
-  finished
-  cancelled
-  taken
+  PENDING
+  PROCESS
+  FINISHED
+  CANCELLED
+  TAKEN
 }
 
 model Product{
   id            Int      @id @default(autoincrement())
   name          String   @db.VarChar(100)
-  brand         String   @db.VarChar(100)
+  brand         Brand    @default(OTHER)
+  manufacturer  String   @default("ORIGINAL") @db.VarChar(100)
   price         Int      @default(0)
   cost_price    Int      @default(0)
-  category      String   @db.VarChar(100)
+  category      Category @default(OTHER)
   stock         Int      @default(0)
 
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
   @@map("products")
+}
+
+enum Brand {
+  APPLE
+  SAMSUNG
+  XIAOMI
+  OPPO
+  VIVO
+  REALME
+  INFINIX
+  TECNO
+  ITEL
+  ASUS
+  HUAWEI
+  SONY
+  GOOGLE
+  NOKIA
+  LENOVO
+  UNIVERSAL 
+  OTHER
+}
+
+enum Category {
+  LCD
+  BATTERY
+  CONNECTOR
+  FLEXIBLE
+  CAMERA
+  SPEAKER
+  BACKDOOR
+  GLASS
+  IC
+  ACCESSORY
+  OTHER
 }

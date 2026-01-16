@@ -4,6 +4,7 @@ import type { ApplicationVariables } from "../type/hono-context";
 import { UserController } from "../controller/user-controller";
 import { ServiceController } from "../controller/repair-controller";
 import { adminMiddleware } from "../middleware/admin-middleware";
+import { ProductController } from "../controller/product-controller";
 
 export const apiRouter = new Hono<{ Variables: ApplicationVariables }>();
 apiRouter.use(authMiddleware);
@@ -20,3 +21,7 @@ apiRouter.get("/api/services/:id", ServiceController.get);
 apiRouter.patch("/api/services/:id", ServiceController.update);
 apiRouter.delete("/api/services/:id", ServiceController.remove);
 apiRouter.get("/api/services", ServiceController.search);
+
+apiRouter.use("/api/products/*", adminMiddleware);
+// Product API
+apiRouter.post("/api/products", ProductController.create);

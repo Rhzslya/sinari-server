@@ -137,7 +137,7 @@ export class ServiceTest {
         phone_number: "08123123123",
         description: "test",
         technician_note: "test",
-        status: "pending",
+        status: "PENDING",
         service_list: {
           create: [
             {
@@ -154,121 +154,84 @@ export class ServiceTest {
   }
 }
 
-export class UserTestRequest {
-  static async post<T>(
-    url: string,
-    body: T,
-    token?: string
-  ): Promise<Response> {
-    const headers = new Headers();
-    headers.append("Content-Type", "application/json");
-    if (token) {
-      headers.append("Authorization", `Bearer ${token}`);
-    }
-
-    return web.request(url, {
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify(body),
+export class ProductTest {
+  static async delete() {
+    await prismaClient.product.deleteMany({
+      where: {
+        name: {
+          contains: "test",
+        },
+      },
     });
   }
 
-  static async get(
-    url: string,
-    headers: Record<string, string> = {}
-  ): Promise<Response> {
-    return web.request(url, {
-      method: "GET",
-      headers: new Headers(headers),
-    });
-  }
-
-  static async update<T>(
-    url: string,
-    body: T,
-    token: string
-  ): Promise<Response> {
-    const headers = new Headers();
-    headers.append("Content-Type", "application/json");
-    if (token) {
-      headers.append("Authorization", `Bearer ${token}`);
-    }
-
-    return web.request(url, {
-      method: "PATCH",
-      headers: headers,
-      body: JSON.stringify(body),
-    });
-  }
-
-  static async delete(url: string, token: string): Promise<Response> {
-    const headers = new Headers();
-    headers.append("Content-Type", "application/json");
-    if (token) {
-      headers.append("Authorization", `Bearer ${token}`);
-    }
-
-    return web.request(url, {
-      method: "DELETE",
-      headers: headers,
+  static async create() {
+    await prismaClient.product.create({
+      data: {
+        name: "test product",
+        brand: "OTHER",
+        manufacturer: "ORIGINAL",
+        category: "OTHER",
+        price: 10000,
+        cost_price: 8000,
+        stock: 10,
+      },
     });
   }
 }
 
-export class ServiceTestRequest {
+export class TestRequest {
+  private static makeHeaders(
+    token?: string,
+    customHeaders: Record<string, string> = {}
+  ): Headers {
+    const headers = new Headers(customHeaders);
+
+    if (!headers.has("Content-Type")) {
+      headers.append("Content-Type", "application/json");
+    }
+
+    if (token) {
+      headers.append("Authorization", `Bearer ${token}`);
+    }
+    return headers;
+  }
+
   static async post<T>(
     url: string,
     body: T,
     token?: string
   ): Promise<Response> {
-    const headers = new Headers();
-    headers.append("Content-Type", "application/json");
-    if (token) {
-      headers.append("Authorization", `Bearer ${token}`);
-    }
-
     return web.request(url, {
       method: "POST",
-      headers: headers,
+      headers: this.makeHeaders(token),
       body: JSON.stringify(body),
     });
   }
 
-  static async update<T>(
+  static async get(url: string, token?: string): Promise<Response> {
+    return web.request(url, {
+      method: "GET",
+      headers: this.makeHeaders(token),
+    });
+  }
+
+  static async patch<T>(
     url: string,
-    headers: Record<string, string>,
-    body: T
+    body: T,
+    token?: string
   ): Promise<Response> {
     return web.request(url, {
       method: "PATCH",
-      headers: new Headers({
-        ...headers,
-        "Content-Type": "application/json",
-      }),
+      headers: this.makeHeaders(token),
       body: JSON.stringify(body),
     });
   }
 
-  static async delete<T>(
-    url: string,
-    headers: Record<string, string>
-  ): Promise<Response> {
+  static async delete(url: string, token?: string): Promise<Response> {
     return web.request(url, {
       method: "DELETE",
-      headers: new Headers({
-        ...headers,
-        "Content-Type": "application/json",
-      }),
-    });
-  }
-
-  static async get(
-    url: string,
-    headers: Record<string, string> = {}
-  ): Promise<Response> {
-    return web.request(url, {
-      method: "GET",
-      headers: new Headers(headers),
+      headers: this.makeHeaders(token),
     });
   }
 }

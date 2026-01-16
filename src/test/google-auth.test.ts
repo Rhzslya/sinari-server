@@ -1,5 +1,5 @@
 import { describe, afterEach, it, expect, spyOn, beforeEach } from "bun:test";
-import { UserTestRequest, UserTest } from "./test-utils";
+import { TestRequest, UserTest } from "./test-utils";
 import { GoogleAuth } from "../utils/google-auth";
 import { logger } from "../application/logging";
 
@@ -19,7 +19,7 @@ describe("POST /api/auth/google", () => {
       name: "test",
     });
 
-    const response = await UserTestRequest.post("/api/auth/google", {
+    const response = await TestRequest.post("/api/auth/google", {
       token: "TEST_TOKEN",
     });
     const body = await response.json();
@@ -50,8 +50,8 @@ describe("POST /api/auth/google", () => {
       name: "test",
     });
 
-    const response = await UserTestRequest.post("/api/auth/google", {
-      token: "TEST_TOKEN",
+    const response = await TestRequest.post("/api/auth/google", {
+      token: "test_token",
     });
     const body = await response.json();
 
@@ -76,7 +76,7 @@ describe("POST /api/auth/google", () => {
       name: "test",
     });
 
-    const response = await UserTestRequest.post("/api/auth/google", {
+    const response = await TestRequest.post("/api/auth/google", {
       token: "TEST_TOKEN",
     });
 
@@ -102,7 +102,7 @@ describe("POST /api/auth/google", () => {
       name: "test",
     });
 
-    const response = await UserTestRequest.post("/api/auth/google", {
+    const response = await TestRequest.post("/api/auth/google", {
       token: "TEST_TOKEN",
     });
 
@@ -119,7 +119,7 @@ describe("POST /api/auth/google", () => {
   it("should reject login if google token is invalid", async () => {
     const googleSpy = spyOn(GoogleAuth, "verifyToken").mockResolvedValue(null);
 
-    const response = await UserTestRequest.post("/api/auth/google", {
+    const response = await TestRequest.post("/api/auth/google", {
       token: "wrong_token",
     });
     const body = await response.json();
@@ -141,7 +141,7 @@ describe("POST /api/auth/google", () => {
       name: "test",
     });
 
-    const response = await UserTestRequest.post("/api/auth/google", {
+    const response = await TestRequest.post("/api/auth/google", {
       token: "TEST_TOKEN",
     });
     const body = await response.json();
@@ -163,7 +163,7 @@ describe("POST /api/auth/google", () => {
       name: "test",
     });
 
-    const response = await UserTestRequest.post("/api/auth/google", {
+    const response = await TestRequest.post("/api/auth/google", {
       token: "TEST_TOKEN",
     });
     const body = await response.json();

@@ -1,8 +1,9 @@
-import type {
-  Prisma,
-  Service,
-  ServiceItem,
-  User,
+import {
+  ServiceStatus,
+  type Prisma,
+  type Service,
+  type ServiceItem,
+  type User,
 } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { ResponseError } from "../error/response-error";
@@ -49,7 +50,7 @@ export class ServicesDataService {
         phone_number: createRequest.phone_number,
         description: createRequest.description,
         technician_note: createRequest.technician_note,
-        status: "pending",
+        status: ServiceStatus.PENDING,
         service_list: {
           create: createRequest.service_list,
         },
