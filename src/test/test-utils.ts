@@ -1,4 +1,4 @@
-import type { User } from "../../generated/prisma/client";
+import type { Service, User } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { web } from "../application/web";
 import bcrypt from "bcrypt";
@@ -246,6 +246,29 @@ export class ServiceTestRequest {
         "Content-Type": "application/json",
       }),
       body: JSON.stringify(body),
+    });
+  }
+
+  static async delete<T>(
+    url: string,
+    headers: Record<string, string>
+  ): Promise<Response> {
+    return web.request(url, {
+      method: "DELETE",
+      headers: new Headers({
+        ...headers,
+        "Content-Type": "application/json",
+      }),
+    });
+  }
+
+  static async get(
+    url: string,
+    headers: Record<string, string> = {}
+  ): Promise<Response> {
+    return web.request(url, {
+      method: "GET",
+      headers: new Headers(headers),
     });
   }
 }

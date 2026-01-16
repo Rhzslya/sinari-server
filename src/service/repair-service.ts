@@ -6,11 +6,13 @@ import type {
 } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { ResponseError } from "../error/response-error";
+import type { Pageable } from "../model/page-model";
 import {
   toPublicServiceResponse,
   toServiceResponse,
   type CreateServiceRequest,
   type PublicServiceResponse,
+  type SearchServiceRequest,
   type ServiceResponse,
   type UpdateServiceRequest,
 } from "../model/repair-model";
@@ -182,5 +184,105 @@ export class ServicesDataService {
     }
 
     return toServiceResponse(service);
+  }
+
+  static async remove(user: User, id: number): Promise<ServiceResponse> {
+    if (user.role !== "admin") {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    const service = await this.checkServiceExists(id);
+
+    await prismaClient.service.delete({
+      where: {
+        id: id,
+      },
+    });
+
+    return toServiceResponse(service);
+  }
+
+  static async search(
+    user: User,
+    request: SearchServiceRequest
+  ): Promise<Pageable<ServiceResponse>> {
+    if (user.role !== "admin") {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    const searchRequest = Validation.validate(RepairValidation.SEARCH, request);
+
+    const page = searchRequest.page ?? 1;
+    const size = searchRequest.size ?? 10;
+    const skip = (page - 1) * size;
+
+    const filters: Prisma.ServiceWhereInput[] = [];
+
+    if (searchRequest.brand) {
+      filters.push({
+        brand: {
+          contains: searchRequest.brand,
+        },
+      });
+    }
+
+    if (searchRequest.model) {
+      filters.push({
+        model: {
+          contains: searchRequest.model,
+        },
+      });
+    }
+
+    if (searchRequest.customer_name) {
+      filters.push({
+        customer_name: {
+          contains: searchRequest.customer_name,
+        },
+      });
+    }
+
+    if (searchRequest.phone_number) {
+      filters.push({
+        phone_number: {
+          contains: searchRequest.phone_number,
+        },
+      });
+    }
+
+    if (searchRequest.status) {
+      filters.push({
+        status: searchRequest.status,
+      });
+    }
+
+    const services = await prismaClient.service.findMany({
+      where: {
+        AND: filters,
+      },
+      take: size,
+      skip: skip,
+      include: {
+        service_list: true,
+      },
+      orderBy: {
+        created_at: "desc",
+      },
+    });
+
+    const total = await prismaClient.service.count({
+      where: {
+        AND: filters,
+      },
+    });
+
+    return {
+      data: services.map((service) => toServiceResponse(service)),
+      paging: {
+        size: size,
+        current_page: page,
+        total_page: Math.ceil(total / size),
+      },
+    };
   }
 }

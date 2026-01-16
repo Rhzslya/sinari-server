@@ -1,10 +1,12 @@
 import type { Context } from "hono";
 import type {
   CreateServiceRequest,
+  SearchServiceRequest,
   UpdateServiceRequest,
 } from "../model/repair-model";
 import { ServicesDataService } from "../service/repair-service";
-import type { User } from "../../generated/prisma/client";
+import type { ServiceStatus, User } from "../../generated/prisma/client";
+import { ResponseError } from "../error/response-error";
 
 export class ServiceController {
   static async create(c: Context) {
@@ -28,7 +30,7 @@ export class ServiceController {
       const id = Number(c.req.param("id"));
 
       if (isNaN(id)) {
-        throw new Error("Invalid service ID");
+        throw new ResponseError(400, "Invalid service ID");
       }
 
       const response = await ServicesDataService.get(user, id);
@@ -52,7 +54,7 @@ export class ServiceController {
       const id = Number(c.req.param("id"));
 
       if (isNaN(id)) {
-        throw new Error("Invalid service ID");
+        throw new ResponseError(400, "Invalid service ID");
       }
 
       const request = (await c.req.json()) as UpdateServiceRequest;
@@ -62,6 +64,46 @@ export class ServiceController {
       const response = await ServicesDataService.update(user, request);
 
       return c.json({ data: response });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async remove(c: Context) {
+    try {
+      const user = c.var.user as User;
+
+      const id = Number(c.req.param("id"));
+
+      if (isNaN(id)) {
+        throw new ResponseError(400, "Invalid service ID");
+      }
+
+      await ServicesDataService.remove(user, id);
+
+      return c.json({ message: "Service deleted successfully" });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async search(c: Context) {
+    try {
+      const user = c.var.user as User;
+
+      const request: SearchServiceRequest = {
+        brand: c.req.query("brand"),
+        model: c.req.query("model"),
+        customer_name: c.req.query("customer_name"),
+        phone_number: c.req.query("phone_number"),
+        status: c.req.query("status") as ServiceStatus | undefined,
+        page: c.req.query("page") ? Number(c.req.query("page")) : 1,
+        size: c.req.query("size") ? Number(c.req.query("size")) : 10,
+      };
+
+      const response = await ServicesDataService.search(user, request);
+
+      return c.json(response);
     } catch (error) {
       throw error;
     }

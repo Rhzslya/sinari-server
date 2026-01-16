@@ -39,8 +39,8 @@ model Service{
   model           String @db.VarChar(100)
   customer_name   String @db.VarChar(100)
   phone_number    String @db.VarChar(100)
-  status          String @default("pending") @db.VarChar(100)
-  
+  status          ServiceStatus @default(pending)
+    
   description     String? @db.Text
   technician_note String? @db.Text
 
@@ -67,6 +67,14 @@ model ServiceItem{
   service       Service @relation(fields: [service_id], references: [id], onDelete: Cascade)
 
   @@map("service_items")
+}
+
+enum ServiceStatus {
+  pending
+  process
+  finished
+  cancelled
+  taken
 }
 
 model Product{

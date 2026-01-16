@@ -18,3 +18,5 @@ apiRouter.use("/api/services/*", adminMiddleware);
 apiRouter.post("/api/services", ServiceController.create);
 apiRouter.get("/api/services/:id", ServiceController.get);
 apiRouter.patch("/api/services/:id", ServiceController.update);
+apiRouter.delete("/api/services/:id", ServiceController.remove);
+apiRouter.get("/api/services", ServiceController.search);

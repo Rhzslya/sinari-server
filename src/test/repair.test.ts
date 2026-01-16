@@ -10,6 +10,7 @@ import type {
   UpdateServiceRequest,
 } from "../model/repair-model";
 import { logger } from "../application/logging";
+import { prismaClient } from "../application/database";
 
 describe("POST /api/services", () => {
   beforeEach(async () => {
@@ -633,6 +634,360 @@ describe("PATCH /api/services/:id", () => {
     logger.debug(body);
 
     expect(response.status).toBe(404);
+    expect(body.errors).toBeDefined();
+  });
+});
+
+describe("DELETE /api/services/:id", () => {
+  afterEach(async () => {
+    await ServiceTest.deleteAll();
+    await UserTest.delete();
+  });
+
+  it("should delete service if user is admin", async () => {
+    await UserTest.createAdmin();
+
+    const service = await ServiceTest.create();
+
+    const response = await ServiceTestRequest.delete(
+      `/api/services/${service.id}`,
+      { Authorization: `Bearer test_token` }
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+
+    const checkService = await prismaClient.service.findUnique({
+      where: {
+        id: service.id,
+      },
+    });
+
+    expect(checkService).toBeNull();
+  });
+
+  it("should delete service if user is admin google", async () => {
+    await UserTest.createAdminGoogle();
+
+    const service = await ServiceTest.create();
+
+    const response = await ServiceTestRequest.delete(
+      `/api/services/${service.id}`,
+      { Authorization: `Bearer test_token` }
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+
+    const checkService = await prismaClient.service.findUnique({
+      where: {
+        id: service.id,
+      },
+    });
+
+    expect(checkService).toBeNull();
+  });
+
+  it("should reject delete service if user is not admin", async () => {
+    await UserTest.create();
+
+    const service = await ServiceTest.create();
+
+    const response = await ServiceTestRequest.delete(
+      `/api/services/${service.id}`,
+      { Authorization: `Bearer test_token` }
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(403);
+    expect(body.errors).toBeDefined();
+  });
+
+  it("should reject delete service if service id is invalid", async () => {
+    await UserTest.createAdmin();
+
+    const service = await ServiceTest.create();
+
+    const response = await ServiceTestRequest.delete(
+      `/api/services/${service.id + 1}`,
+      { Authorization: `Bearer test_token` }
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(404);
+    expect(body.errors).toBeDefined();
+  });
+
+  it("should reject delete service if token is invalid", async () => {
+    await UserTest.createAdmin();
+
+    const service = await ServiceTest.create();
+
+    const response = await ServiceTestRequest.delete(
+      `/api/services/${service.id + 1}`,
+      { Authorization: `Bearer wrong_token` }
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(401);
+    expect(body.errors).toBeDefined();
+  });
+});
+
+describe("GET /api/services", () => {
+  afterEach(async () => {
+    await ServiceTest.deleteAll();
+    await UserTest.delete();
+  });
+
+  it("should search service if user is admin", async () => {
+    await UserTest.createAdmin();
+
+    await ServiceTest.create();
+
+    const response = await ServiceTestRequest.get("/api/services", {
+      Authorization: `Bearer test_token`,
+    });
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.paging.current_page).toBe(1);
+    expect(body.paging.total_page).toBe(1);
+    expect(body.paging.size).toBe(10);
+  });
+
+  it("should search service if user is admin google", async () => {
+    await UserTest.createAdminGoogle();
+
+    await ServiceTest.create();
+
+    const response = await ServiceTestRequest.get("/api/services", {
+      Authorization: `Bearer test_token`,
+    });
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.paging.current_page).toBe(1);
+    expect(body.paging.total_page).toBe(1);
+    expect(body.paging.size).toBe(10);
+  });
+
+  it("should search service using brand", async () => {
+    await UserTest.createAdminGoogle();
+    await ServiceTest.create();
+
+    const queryParams = new URLSearchParams({
+      brand: "es",
+      page: "1",
+      size: "10",
+    }).toString();
+
+    const response = await ServiceTestRequest.get(
+      `/api/services?${queryParams}`,
+      { Authorization: `Bearer test_token` }
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.paging.current_page).toBe(1);
+    expect(body.paging.total_page).toBe(1);
+    expect(body.paging.size).toBe(10);
+  });
+
+  it("should search service using model", async () => {
+    await UserTest.createAdminGoogle();
+    await ServiceTest.create();
+
+    const queryParams = new URLSearchParams({
+      model: "te",
+      page: "1",
+      size: "10",
+    }).toString();
+
+    const response = await ServiceTestRequest.get(
+      `/api/services?${queryParams}`,
+      { Authorization: `Bearer test_token` }
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.paging.current_page).toBe(1);
+    expect(body.paging.total_page).toBe(1);
+    expect(body.paging.size).toBe(10);
+  });
+
+  it("should search service using customer name", async () => {
+    await UserTest.createAdminGoogle();
+    await ServiceTest.create();
+
+    const queryParams = new URLSearchParams({
+      customer_name: "st",
+      page: "1",
+      size: "10",
+    }).toString();
+
+    const response = await ServiceTestRequest.get(
+      `/api/services?${queryParams}`,
+      { Authorization: `Bearer test_token` }
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.paging.current_page).toBe(1);
+    expect(body.paging.total_page).toBe(1);
+    expect(body.paging.size).toBe(10);
+  });
+
+  it("should search service using phone number", async () => {
+    await UserTest.createAdminGoogle();
+    await ServiceTest.create();
+
+    const queryParams = new URLSearchParams({
+      phone_number: "08123",
+      page: "1",
+      size: "10",
+    }).toString();
+
+    const response = await ServiceTestRequest.get(
+      `/api/services?${queryParams}`,
+      { Authorization: `Bearer test_token` }
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.paging.current_page).toBe(1);
+    expect(body.paging.total_page).toBe(1);
+    expect(body.paging.size).toBe(10);
+  });
+
+  it("should search service using status", async () => {
+    await UserTest.createAdminGoogle();
+    await ServiceTest.create();
+
+    const queryParams = new URLSearchParams({
+      status: "pending",
+      page: "1",
+      size: "10",
+    }).toString();
+
+    const response = await ServiceTestRequest.get(
+      `/api/services?${queryParams}`,
+      { Authorization: `Bearer test_token` }
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.paging.current_page).toBe(1);
+    expect(body.paging.total_page).toBe(1);
+    expect(body.paging.size).toBe(10);
+  });
+
+  it("should search service using page", async () => {
+    await UserTest.createAdminGoogle();
+    await ServiceTest.create();
+
+    const queryParams = new URLSearchParams({
+      page: "1",
+      size: "10",
+    }).toString();
+
+    const response = await ServiceTestRequest.get(
+      `/api/services?${queryParams}`,
+      { Authorization: `Bearer test_token` }
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.paging.current_page).toBe(1);
+    expect(body.paging.total_page).toBe(1);
+    expect(body.paging.size).toBe(10);
+  });
+
+  it("should search service if no result", async () => {
+    await UserTest.createAdminGoogle();
+    await ServiceTest.create();
+
+    const queryParams = new URLSearchParams({
+      brand: "wrong",
+      page: "1",
+      size: "10",
+    }).toString();
+
+    const response = await ServiceTestRequest.get(
+      `/api/services?${queryParams}`,
+      { Authorization: `Bearer test_token` }
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(0);
+    expect(body.paging.current_page).toBe(1);
+    expect(body.paging.total_page).toBe(0);
+    expect(body.paging.size).toBe(10);
+  });
+
+  it("should reject search service if user is not admin", async () => {
+    await UserTest.create();
+    await ServiceTest.create();
+
+    const queryParams = new URLSearchParams({
+      brand: "wrong",
+      page: "1",
+      size: "10",
+    }).toString();
+
+    const response = await ServiceTestRequest.get(
+      `/api/services?${queryParams}`,
+      { Authorization: `Bearer test_token` }
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(403);
     expect(body.errors).toBeDefined();
   });
 });

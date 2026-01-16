@@ -1,4 +1,8 @@
-import type { Service, ServiceItem } from "../../generated/prisma/client";
+import type {
+  Service,
+  ServiceItem,
+  ServiceStatus,
+} from "../../generated/prisma/client";
 
 export type ServiceResponse = {
   id: number;
@@ -8,7 +12,7 @@ export type ServiceResponse = {
   phone_number: string;
   description?: string | null;
   technician_note?: string | null;
-  status: string;
+  status: ServiceStatus;
   service_list: {
     id: number;
     name: string;
@@ -26,11 +30,12 @@ export type PublicServiceResponse = {
   brand: string;
   model: string;
   customer_name: string;
-  status: string;
+  status: ServiceStatus;
   phone_number: string;
   description?: string | null;
   technician_note?: string | null;
   service_list: {
+    id: number;
     name: string;
     price: number;
   }[];
@@ -64,7 +69,7 @@ export type UpdateServiceItemRequest = {
 
 export type UpdateServiceRequest = {
   id: number;
-  status?: string;
+  status?: ServiceStatus;
   technician_note?: string;
   discount?: number;
   brand?: string;
@@ -73,6 +78,16 @@ export type UpdateServiceRequest = {
   phone_number?: string;
   description?: string;
   service_list?: UpdateServiceItemRequest[];
+};
+
+export type SearchServiceRequest = {
+  brand?: string;
+  model?: string;
+  customer_name?: string;
+  phone_number?: string;
+  status?: ServiceStatus;
+  page?: number;
+  size?: number;
 };
 
 export function toServiceResponse(

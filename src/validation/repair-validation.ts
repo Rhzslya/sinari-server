@@ -41,4 +41,16 @@ export class RepairValidation {
       )
       .optional(),
   });
+
+  static readonly SEARCH = z.object({
+    brand: z.string().min(1).max(100).optional(),
+    model: z.string().min(1).max(100).optional(),
+    customer_name: z.string().min(1).max(100).optional(),
+    phone_number: z.string().min(1).max(100).optional(),
+    status: z
+      .enum(["pending", "process", "finished", "cancelled", "taken"])
+      .optional(),
+    page: z.coerce.number().min(1).positive().default(1),
+    size: z.coerce.number().min(1).max(100).positive().default(10),
+  });
 }
