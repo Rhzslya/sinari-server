@@ -166,7 +166,7 @@ export class ProductTest {
   }
 
   static async create() {
-    await prismaClient.product.create({
+    return await prismaClient.product.create({
       data: {
         name: "test product",
         brand: "OTHER",

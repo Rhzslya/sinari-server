@@ -1,10 +1,12 @@
-import type { User } from "../../generated/prisma/client";
+import type { Product, User } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { logger } from "../application/logging";
 import { ResponseError } from "../error/response-error";
 import {
+  toProductPublicResponse,
   toProductResponse,
   type CreateProductRequest,
+  type ProductPublicResponse,
   type ProductResponse,
 } from "../model/product-model";
 import { ProductValidation } from "../validation/product-validation";
@@ -48,5 +50,32 @@ export class ProductsService {
     });
 
     return toProductResponse(product);
+  }
+
+  static async checkProductExist(id: number): Promise<Product> {
+    const product = await prismaClient.product.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!product) {
+      throw new ResponseError(404, "Product not found");
+    }
+
+    return product;
+  }
+
+  static async get(
+    user: User | null,
+    id: number
+  ): Promise<ProductResponse | ProductPublicResponse> {
+    const product = await this.checkProductExist(id);
+
+    if (user && user.role === "admin") {
+      return toProductResponse(product);
+    }
+
+    return toProductPublicResponse(product);
   }
 }
