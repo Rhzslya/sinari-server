@@ -11,4 +11,14 @@ export class ProductValidation {
     category: z.enum(Category).default(Category.OTHER),
     stock: z.number().min(0).default(0),
   });
+
+  static readonly UPDATE = z.object({
+    name: z.string().min(1).max(100).optional(),
+    brand: z.enum(Brand).optional(),
+    manufacturer: z.string().min(1).max(100).optional(),
+    price: z.number().min(0).positive().optional(),
+    cost_price: z.number().min(0).positive().optional(),
+    category: z.enum(Category).optional(),
+    stock: z.number().min(0).optional(),
+  });
 }

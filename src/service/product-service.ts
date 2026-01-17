@@ -8,6 +8,7 @@ import {
   type CreateProductRequest,
   type ProductPublicResponse,
   type ProductResponse,
+  type UpdateProductRequest,
 } from "../model/product-model";
 import { ProductValidation } from "../validation/product-validation";
 import { Validation } from "../validation/validation";
@@ -15,7 +16,7 @@ import { Validation } from "../validation/validation";
 export class ProductsService {
   static async create(
     user: User,
-    request: CreateProductRequest
+    request: CreateProductRequest,
   ): Promise<ProductResponse> {
     if (user.role !== "admin") {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
@@ -23,18 +24,23 @@ export class ProductsService {
 
     const createRequest = Validation.validate(
       ProductValidation.CREATE,
-      request
+      request,
     );
 
     const countExistingProduct = await prismaClient.product.count({
       where: {
         name: createRequest.name,
         manufacturer: createRequest.manufacturer?.toUpperCase() || "ORIGINAL",
+        brand: createRequest.brand,
+        category: createRequest.category,
       },
     });
 
     if (countExistingProduct > 0) {
-      throw new ResponseError(400, "Product with this name already exists");
+      throw new ResponseError(
+        400,
+        "Product already exists (Same Name, Brand, Manufacturer & Category)",
+      );
     }
 
     const product = await prismaClient.product.create({
@@ -68,7 +74,7 @@ export class ProductsService {
 
   static async get(
     user: User | null,
-    id: number
+    id: number,
   ): Promise<ProductResponse | ProductPublicResponse> {
     const product = await this.checkProductExist(id);
 
@@ -77,5 +83,71 @@ export class ProductsService {
     }
 
     return toProductPublicResponse(product);
+  }
+
+  static async update(
+    user: User,
+    request: UpdateProductRequest,
+  ): Promise<ProductResponse> {
+    if (user.role !== "admin") {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    const oldProduct = await this.checkProductExist(request.id);
+
+    const updateRequest = Validation.validate(
+      ProductValidation.UPDATE,
+      request,
+    );
+
+    if (
+      updateRequest.name ||
+      updateRequest.manufacturer ||
+      updateRequest.brand ||
+      updateRequest.category
+    ) {
+      const nameCheck = updateRequest.name ?? oldProduct.name;
+      const manufacturerCheck = updateRequest.manufacturer
+        ? updateRequest.manufacturer.toUpperCase()
+        : oldProduct.manufacturer;
+      const brandCheck = updateRequest.brand ?? oldProduct.brand;
+      const categoryCheck = updateRequest.category ?? oldProduct.category;
+
+      const countExistingProduct = await prismaClient.product.count({
+        where: {
+          name: nameCheck,
+          manufacturer: manufacturerCheck,
+          brand: brandCheck,
+          category: categoryCheck,
+          id: {
+            not: request.id,
+          },
+        },
+      });
+
+      if (countExistingProduct > 0) {
+        throw new ResponseError(
+          400,
+          "Product already exists (Same Name, Brand, Manufacturer & Category)",
+        );
+      }
+    }
+
+    const product = await prismaClient.product.update({
+      where: {
+        id: request.id,
+      },
+      data: {
+        name: updateRequest.name,
+        brand: updateRequest.brand,
+        manufacturer: updateRequest.manufacturer?.toUpperCase(),
+        category: updateRequest.category,
+        price: updateRequest.price,
+        cost_price: updateRequest.cost_price,
+        stock: updateRequest.stock,
+      },
+    });
+
+    return toProductResponse(product);
   }
 }

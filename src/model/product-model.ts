@@ -33,6 +33,17 @@ export type CreateProductRequest = {
   stock?: number;
 };
 
+export type UpdateProductRequest = {
+  id: number;
+  name?: string;
+  brand?: Brand;
+  manufacturer?: string;
+  price?: number;
+  cost_price?: number;
+  category?: Category;
+  stock?: number;
+};
+
 export function toProductResponse(product: Product): ProductResponse {
   return {
     id: product.id,
@@ -49,7 +60,7 @@ export function toProductResponse(product: Product): ProductResponse {
 }
 
 export function toProductPublicResponse(
-  product: Product
+  product: Product,
 ): ProductPublicResponse {
   return {
     id: product.id,

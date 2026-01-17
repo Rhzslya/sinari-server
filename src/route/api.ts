@@ -25,3 +25,4 @@ apiRouter.get("/api/services", ServiceController.search);
 apiRouter.use("/api/products/*", adminMiddleware);
 // Product API
 apiRouter.post("/api/products", ProductController.create);
+apiRouter.patch("/api/products/:id", ProductController.update);
