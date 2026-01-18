@@ -24,7 +24,7 @@ import { v4 as uuid } from "uuid";
 export class ServicesDataService {
   static async create(
     user: User,
-    request: CreateServiceRequest
+    request: CreateServiceRequest,
   ): Promise<ServiceResponse> {
     if (user.role !== "admin") {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
@@ -34,7 +34,7 @@ export class ServicesDataService {
 
     const subTotal = createRequest.service_list.reduce(
       (total, item) => total + item.price,
-      0
+      0,
     );
 
     const discountAmount = (subTotal * (createRequest.discount || 0)) / 100;
@@ -73,7 +73,7 @@ export class ServicesDataService {
   }
 
   static async checkServiceExists(
-    id: number
+    id: number,
   ): Promise<Service & { service_list: ServiceItem[] }> {
     const service = await prismaClient.service.findUnique({
       where: {
@@ -120,7 +120,7 @@ export class ServicesDataService {
 
   static async update(
     user: User,
-    request: UpdateServiceRequest
+    request: UpdateServiceRequest,
   ): Promise<ServiceResponse> {
     if (user.role !== "admin") {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
@@ -138,7 +138,7 @@ export class ServicesDataService {
 
     const subTotal = currentItems.reduce(
       (total, item) => total + item.price,
-      0
+      0,
     );
 
     const currentDiscount = updateRequest.discount ?? oldService.discount;
@@ -154,7 +154,7 @@ export class ServicesDataService {
       phone_number: updateRequest.phone_number,
       description: updateRequest.description,
       technician_note: updateRequest.technician_note,
-      status: updateRequest.status,
+      status: updateRequest.status as ServiceStatus,
       discount: currentDiscount,
       total_price: totalPrice,
     };
@@ -205,7 +205,7 @@ export class ServicesDataService {
 
   static async search(
     user: User,
-    request: SearchServiceRequest
+    request: SearchServiceRequest,
   ): Promise<Pageable<ServiceResponse>> {
     if (user.role !== "admin") {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
@@ -253,7 +253,7 @@ export class ServicesDataService {
 
     if (searchRequest.status) {
       filters.push({
-        status: searchRequest.status,
+        status: searchRequest.status as ServiceStatus,
       });
     }
 

@@ -86,12 +86,12 @@ export type SearchServiceRequest = {
   customer_name?: string;
   phone_number?: string;
   status?: ServiceStatus;
-  page?: number;
-  size?: number;
+  page: number;
+  size: number;
 };
 
 export function toServiceResponse(
-  service: Service & { service_list: ServiceItem[] }
+  service: Service & { service_list: ServiceItem[] },
 ): ServiceResponse {
   return {
     id: service.id,
@@ -119,7 +119,7 @@ export function toServiceResponse(
 }
 
 export function toPublicServiceResponse(
-  service: Service & { service_list: ServiceItem[] }
+  service: Service & { service_list: ServiceItem[] },
 ): PublicServiceResponse {
   return {
     brand: service.brand,
