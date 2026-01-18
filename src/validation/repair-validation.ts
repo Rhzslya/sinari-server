@@ -1,6 +1,11 @@
 import z from "zod";
 import { ServiceStatus } from "../../generated/prisma/enums";
 
+const SERVICE_STATUS_VALUES = Object.values(ServiceStatus) as [
+  string,
+  ...string[],
+];
+
 export class RepairValidation {
   static readonly CREATE = z.object({
     brand: z.string().min(1).max(100),
@@ -14,7 +19,7 @@ export class RepairValidation {
         z.object({
           name: z.string().min(1).max(100),
           price: z.number().min(1000).positive(),
-        })
+        }),
       )
       .min(1, { message: "Service list must have at least 1 service" }),
     discount: z.number().min(0).max(100).optional(),
@@ -22,8 +27,7 @@ export class RepairValidation {
 
   static readonly UPDATE = z.object({
     id: z.number().positive(),
-    status: z.enum(ServiceStatus).optional(),
-
+    status: z.enum(SERVICE_STATUS_VALUES).optional(),
     technician_note: z.string().optional(),
     discount: z.number().min(0).max(100).optional(),
     brand: z.string().min(1).max(100).optional(),
@@ -36,7 +40,7 @@ export class RepairValidation {
         z.object({
           name: z.string().min(1),
           price: z.number().positive(),
-        })
+        }),
       )
       .optional(),
   });
@@ -46,7 +50,7 @@ export class RepairValidation {
     model: z.string().min(1).max(100).optional(),
     customer_name: z.string().min(1).max(100).optional(),
     phone_number: z.string().min(1).max(100).optional(),
-    status: z.enum(ServiceStatus).optional(),
+    status: z.enum(SERVICE_STATUS_VALUES).optional(),
     page: z.coerce.number().min(1).positive().default(1),
     size: z.coerce.number().min(1).max(100).positive().default(10),
   });

@@ -44,6 +44,20 @@ export type UpdateProductRequest = {
   stock?: number;
 };
 
+export type SearchProductRequest = {
+  name?: string;
+  brand?: Brand;
+  manufacturer?: string;
+  category?: Category;
+  min_price?: number;
+  max_price?: number;
+  in_stock_only?: boolean;
+  page: number;
+  size: number;
+  sort_by?: "name" | "price" | "stock" | "created_at";
+  sort_order?: "asc" | "desc";
+};
+
 export function toProductResponse(product: Product): ProductResponse {
   return {
     id: product.id,

@@ -1,9 +1,10 @@
 import type { Context } from "hono";
 import type {
   CreateProductRequest,
+  SearchProductRequest,
   UpdateProductRequest,
 } from "../model/product-model";
-import type { User } from "../../generated/prisma/client";
+import type { Brand, Category, User } from "../../generated/prisma/client";
 import { ProductsService } from "../service/product-service";
 import { ResponseError } from "../error/response-error";
 import { prismaClient } from "../application/database";
@@ -91,6 +92,59 @@ export class ProductController {
       await ProductsService.remove(user, id);
 
       return c.json({ message: "Product deleted successfully" });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async search(c: Context) {
+    try {
+      let user: User | null = null;
+
+      const authHeader = c.req.header("Authorization");
+
+      if (authHeader) {
+        const token = authHeader.split(" ")[1];
+        if (token) {
+          user = await prismaClient.user.findFirst({
+            where: { token: token },
+          });
+
+          if (!user) {
+            throw new ResponseError(401, "Unauthorized: Invalid Token");
+          }
+        }
+      }
+
+      const request: SearchProductRequest = {
+        name: c.req.query("name"),
+        brand: c.req.query("brand") as Brand,
+        manufacturer: c.req.query("manufacturer"),
+        category: c.req.query("category") as Category,
+
+        min_price: c.req.query("min_price")
+          ? Number(c.req.query("min_price"))
+          : undefined,
+        max_price: c.req.query("max_price")
+          ? Number(c.req.query("max_price"))
+          : undefined,
+
+        in_stock_only: c.req.query("in_stock_only") === "true",
+
+        page: c.req.query("page") ? Number(c.req.query("page")) : 1,
+        size: c.req.query("size") ? Number(c.req.query("size")) : 10,
+
+        sort_by: c.req.query("sort_by") as
+          | "name"
+          | "price"
+          | "stock"
+          | "created_at",
+        sort_order: c.req.query("sort_order") as "asc" | "desc",
+      };
+
+      const response = await ProductsService.search(user, request);
+
+      return c.json(response);
     } catch (error) {
       throw error;
     }

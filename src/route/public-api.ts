@@ -14,8 +14,9 @@ publicRouter.get("/api/auth/verify", (c) => UserController.verify(c));
 // Repair Public Routes
 publicRouter.get(
   "/api/public/services/track/:token",
-  ServiceController.getPublic
+  ServiceController.getPublic,
 );
 
 // Product Public Routes
 publicRouter.get("/api/products/:id", ProductController.get);
+publicRouter.get("/api/products", ProductController.search);

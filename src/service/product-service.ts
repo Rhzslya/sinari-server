@@ -1,15 +1,24 @@
-import type { Product, User } from "../../generated/prisma/client";
+import type {
+  Brand,
+  Category,
+  Prisma,
+  Product,
+  User,
+} from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { logger } from "../application/logging";
 import { ResponseError } from "../error/response-error";
+import type { Pageable } from "../model/page-model";
 import {
   toProductPublicResponse,
   toProductResponse,
   type CreateProductRequest,
   type ProductPublicResponse,
   type ProductResponse,
+  type SearchProductRequest,
   type UpdateProductRequest,
 } from "../model/product-model";
+import type { SearchServiceRequest } from "../model/repair-model";
 import { ProductValidation } from "../validation/product-validation";
 import { Validation } from "../validation/validation";
 
@@ -165,5 +174,91 @@ export class ProductsService {
     });
 
     return toProductResponse(product);
+  }
+
+  static async search(
+    user: User | null,
+    request: SearchProductRequest,
+  ): Promise<Pageable<ProductResponse | ProductPublicResponse>> {
+    const searchRequest = Validation.validate(
+      ProductValidation.SEARCH,
+      request,
+    );
+
+    const skip = (searchRequest.page - 1) * searchRequest.size;
+
+    const andFilters: Prisma.ProductWhereInput[] = [];
+
+    if (searchRequest.name) {
+      andFilters.push({
+        name: { contains: searchRequest.name },
+      });
+    }
+
+    if (searchRequest.brand) {
+      andFilters.push({ brand: searchRequest.brand as Brand });
+    }
+
+    if (searchRequest.category) {
+      andFilters.push({ category: searchRequest.category as Category });
+    }
+
+    if (searchRequest.manufacturer) {
+      andFilters.push({
+        manufacturer: { contains: searchRequest.manufacturer },
+      });
+    }
+
+    if (searchRequest.min_price || searchRequest.max_price) {
+      andFilters.push({
+        price: {
+          gte: searchRequest.min_price,
+          lte: searchRequest.max_price,
+        },
+      });
+    }
+
+    if (searchRequest.in_stock_only) {
+      andFilters.push({
+        stock: { gt: 0 },
+      });
+    }
+
+    const whereClause: Prisma.ProductWhereInput = {
+      AND: andFilters,
+    };
+
+    const products = await prismaClient.product.findMany({
+      where: whereClause,
+      take: searchRequest.size,
+      skip: skip,
+      orderBy: {
+        [searchRequest.sort_by || "created_at"]:
+          searchRequest.sort_order || "desc",
+      },
+    });
+
+    const totalItems = await prismaClient.product.count({
+      where: whereClause,
+    });
+
+    const isAdmin = user && user.role === "admin";
+
+    const data = products.map((product) => {
+      if (isAdmin) {
+        return toProductResponse(product);
+      } else {
+        return toProductPublicResponse(product);
+      }
+    });
+
+    return {
+      data: data,
+      paging: {
+        size: searchRequest.size,
+        current_page: searchRequest.page,
+        total_page: Math.ceil(totalItems / searchRequest.size),
+      },
+    };
   }
 }
