@@ -38,7 +38,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -77,7 +77,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -120,7 +120,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -169,7 +169,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -206,7 +206,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -235,7 +235,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -262,7 +262,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "wrong_token"
+      "wrong_token",
     );
 
     const body = await response.json();
@@ -288,7 +288,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -317,7 +317,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -339,7 +339,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -368,7 +368,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -390,7 +390,7 @@ describe("GET /api/services/:id", () => {
 
     const response = await TestRequest.get(
       `/api/services/${service.id}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -408,7 +408,7 @@ describe("GET /api/services/:id", () => {
 
     const response = await TestRequest.get(
       `/api/services/${service.id}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -426,7 +426,7 @@ describe("GET /api/services/:id", () => {
 
     const response = await TestRequest.get(
       `/api/services/${service.id}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -444,7 +444,7 @@ describe("GET /api/services/:id", () => {
 
     const response = await TestRequest.get(
       `/api/services/${service.id + 1}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -465,7 +465,7 @@ describe("GET /api/public/services/track/:token", () => {
     const service = await ServiceTest.create();
 
     const response = await TestRequest.get(
-      `/api/public/services/track/${service.tracking_token}`
+      `/api/public/services/track/${service.tracking_token}`,
     );
 
     const body = await response.json();
@@ -479,7 +479,7 @@ describe("GET /api/public/services/track/:token", () => {
     const service = await ServiceTest.create();
 
     const response = await TestRequest.get(
-      `/api/public/services/track/${service.tracking_token + "wrong"}`
+      `/api/public/services/track/${service.tracking_token + "wrong"}`,
     );
 
     const body = await response.json();
@@ -510,7 +510,7 @@ describe("PATCH /api/services/:id", () => {
     const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id}`,
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -544,7 +544,7 @@ describe("PATCH /api/services/:id", () => {
     const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id}`,
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -571,7 +571,7 @@ describe("PATCH /api/services/:id", () => {
     const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id}`,
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -597,7 +597,7 @@ describe("PATCH /api/services/:id", () => {
     const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id}`,
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -622,7 +622,7 @@ describe("PATCH /api/services/:id", () => {
     const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id + 10}`,
       requestBody,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -647,7 +647,7 @@ describe("DELETE /api/services/:id", () => {
 
     const response = await TestRequest.delete(
       `/api/services/${service.id}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -672,7 +672,7 @@ describe("DELETE /api/services/:id", () => {
 
     const response = await TestRequest.delete(
       `/api/services/${service.id}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -697,7 +697,7 @@ describe("DELETE /api/services/:id", () => {
 
     const response = await TestRequest.delete(
       `/api/services/${service.id}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -715,7 +715,7 @@ describe("DELETE /api/services/:id", () => {
 
     const response = await TestRequest.delete(
       `/api/services/${service.id + 1}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -733,7 +733,7 @@ describe("DELETE /api/services/:id", () => {
 
     const response = await TestRequest.delete(
       `/api/services/${service.id + 1}`,
-      "wrong_token"
+      "wrong_token",
     );
 
     const body = await response.json();
@@ -799,7 +799,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -824,7 +824,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -849,7 +849,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -874,7 +874,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -899,7 +899,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -923,7 +923,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -948,7 +948,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -959,6 +959,84 @@ describe("GET /api/services", () => {
     expect(body.paging.current_page).toBe(1);
     expect(body.paging.total_page).toBe(0);
     expect(body.paging.size).toBe(10);
+  });
+
+  it.only("should support multiple sort", async () => {
+    await UserTest.createAdminGoogle();
+
+    await prismaClient.service.create({
+      data: {
+        brand: "test",
+        model: "test",
+        customer_name: "test",
+        phone_number: "test",
+        description: "test",
+        technician_note: "test",
+        status: "PENDING",
+        service_list: {
+          create: [
+            {
+              name: "test",
+              price: 1000,
+            },
+            {
+              name: "test2",
+              price: 10000,
+            },
+          ],
+        },
+        discount: 0,
+        total_price: 11000,
+        tracking_token: "test_token1",
+      },
+    });
+
+    await prismaClient.service.create({
+      data: {
+        brand: "test",
+        model: "test",
+        customer_name: "test",
+        phone_number: "test",
+        description: "test",
+        technician_note: "test",
+        status: "PENDING",
+        service_list: {
+          create: [
+            {
+              name: "test",
+              price: 1000,
+            },
+            {
+              name: "test2",
+              price: 10000,
+            },
+          ],
+        },
+        discount: 0,
+        total_price: 11000,
+        tracking_token: "test_token2",
+      },
+    });
+
+    const queryParams = new URLSearchParams({
+      sort_by: "total_price",
+      sort_order: "desc",
+      page: "1",
+      size: "10",
+      created_at: "desc",
+    });
+
+    const response = await TestRequest.get(
+      `/api/services?${queryParams}`,
+      "test_token",
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(2);
   });
 
   it("should reject search service if user is not admin", async () => {
@@ -973,7 +1051,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();

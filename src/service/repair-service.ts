@@ -1,4 +1,5 @@
 import {
+  Brand,
   ServiceStatus,
   type Prisma,
   type Service,
@@ -213,14 +214,12 @@ export class ServicesDataService {
 
     const searchRequest = Validation.validate(RepairValidation.SEARCH, request);
 
-    const page = searchRequest.page ?? 1;
-    const size = searchRequest.size ?? 10;
-    const skip = (page - 1) * size;
+    const skip = (searchRequest.page - 1) * searchRequest.size;
 
-    const filters: Prisma.ServiceWhereInput[] = [];
+    const andFilters: Prisma.ServiceWhereInput[] = [];
 
     if (searchRequest.brand) {
-      filters.push({
+      andFilters.push({
         brand: {
           contains: searchRequest.brand,
         },
@@ -228,7 +227,7 @@ export class ServicesDataService {
     }
 
     if (searchRequest.model) {
-      filters.push({
+      andFilters.push({
         model: {
           contains: searchRequest.model,
         },
@@ -236,7 +235,7 @@ export class ServicesDataService {
     }
 
     if (searchRequest.customer_name) {
-      filters.push({
+      andFilters.push({
         customer_name: {
           contains: searchRequest.customer_name,
         },
@@ -244,7 +243,7 @@ export class ServicesDataService {
     }
 
     if (searchRequest.phone_number) {
-      filters.push({
+      andFilters.push({
         phone_number: {
           contains: searchRequest.phone_number,
         },
@@ -252,37 +251,49 @@ export class ServicesDataService {
     }
 
     if (searchRequest.status) {
-      filters.push({
+      andFilters.push({
         status: searchRequest.status as ServiceStatus,
       });
     }
 
+    if (searchRequest.min_price || searchRequest.max_price) {
+      andFilters.push({
+        total_price: {
+          gte: searchRequest.min_price,
+          lte: searchRequest.max_price,
+        },
+      });
+    }
+
+    const whereClause: Prisma.ServiceWhereInput = {
+      AND: andFilters,
+    };
+
     const services = await prismaClient.service.findMany({
       where: {
-        AND: filters,
+        AND: andFilters,
       },
-      take: size,
+      take: searchRequest.size,
       skip: skip,
       include: {
         service_list: true,
       },
       orderBy: {
-        created_at: "desc",
+        [searchRequest.sort_by || "created_at"]:
+          searchRequest.sort_order || "desc",
       },
     });
 
     const total = await prismaClient.service.count({
-      where: {
-        AND: filters,
-      },
+      where: whereClause,
     });
 
     return {
       data: services.map((service) => toServiceResponse(service)),
       paging: {
-        size: size,
-        current_page: page,
-        total_page: Math.ceil(total / size),
+        size: searchRequest.size,
+        current_page: searchRequest.page,
+        total_page: Math.ceil(total / searchRequest.size),
       },
     };
   }

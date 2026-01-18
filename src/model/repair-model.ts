@@ -88,6 +88,10 @@ export type SearchServiceRequest = {
   status?: ServiceStatus;
   page: number;
   size: number;
+  min_price?: number;
+  max_price?: number;
+  sort_by?: "total_price" | "created_at" | "updated_at";
+  sort_order?: "asc" | "desc";
 };
 
 export function toServiceResponse(

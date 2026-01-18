@@ -50,8 +50,12 @@ export class RepairValidation {
     model: z.string().min(1).max(100).optional(),
     customer_name: z.string().min(1).max(100).optional(),
     phone_number: z.string().min(1).max(100).optional(),
+    min_price: z.coerce.number().min(0).optional(),
+    max_price: z.coerce.number().min(0).optional(),
     status: z.enum(SERVICE_STATUS_VALUES).optional(),
     page: z.coerce.number().min(1).positive().default(1),
     size: z.coerce.number().min(1).max(100).positive().default(10),
+    sort_by: z.enum(["total_price", "created_at", "updated_at"]).optional(),
+    sort_order: z.enum(["asc", "desc"]).optional(),
   });
 }

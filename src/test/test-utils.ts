@@ -168,7 +168,7 @@ export class ProductTest {
   static async create() {
     return await prismaClient.product.create({
       data: {
-        name: "test product",
+        name: "test",
         brand: "OTHER",
         manufacturer: "ORIGINAL",
         category: "OTHER",
@@ -183,7 +183,7 @@ export class ProductTest {
 export class TestRequest {
   private static makeHeaders(
     token?: string,
-    customHeaders: Record<string, string> = {}
+    customHeaders: Record<string, string> = {},
   ): Headers {
     const headers = new Headers(customHeaders);
 
@@ -200,7 +200,7 @@ export class TestRequest {
   static async post<T>(
     url: string,
     body: T,
-    token?: string
+    token?: string,
   ): Promise<Response> {
     return web.request(url, {
       method: "POST",
@@ -219,7 +219,7 @@ export class TestRequest {
   static async patch<T>(
     url: string,
     body: T,
-    token?: string
+    token?: string,
   ): Promise<Response> {
     return web.request(url, {
       method: "PATCH",
