@@ -78,4 +78,21 @@ export class ProductController {
       throw error;
     }
   }
+
+  static async remove(c: Context) {
+    try {
+      const user = c.var.user as User;
+      const id = Number(c.req.param("id"));
+
+      if (isNaN(id)) {
+        throw new ResponseError(400, "Invalid product ID");
+      }
+
+      await ProductsService.remove(user, id);
+
+      return c.json({ message: "Product deleted successfully" });
+    } catch (error) {
+      throw error;
+    }
+  }
 }

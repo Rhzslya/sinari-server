@@ -527,3 +527,100 @@ describe("PATCH /api/products/:id", () => {
     expect(body.errors).toBeDefined();
   });
 });
+
+describe("DELETE /api/products/:id", () => {
+  afterEach(async () => {
+    await ProductTest.delete();
+    await UserTest.delete();
+  });
+
+  it("should delete a product if user is admin", async () => {
+    await UserTest.createAdmin();
+
+    const product = await ProductTest.create();
+
+    const response = await TestRequest.delete(
+      `/api/products/${product.id}`,
+      "test_token",
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.message).toBe("Product deleted successfully");
+  });
+
+  it("should delete a product if user is admin google", async () => {
+    await UserTest.createAdminGoogle();
+
+    const product = await ProductTest.create();
+
+    const response = await TestRequest.delete(
+      `/api/products/${product.id}`,
+      "test_token",
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.message).toBe("Product deleted successfully");
+  });
+
+  it("should reject delete product if product id is invalid", async () => {
+    await UserTest.createAdmin();
+
+    const product = await ProductTest.create();
+
+    const response = await TestRequest.delete(
+      `/api/products/${product.id + 1}`,
+      "test_token",
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(404);
+    expect(body.errors).toBeDefined();
+  });
+
+  it("should reject delete product if user is not admin", async () => {
+    await UserTest.create();
+
+    const product = await ProductTest.create();
+
+    const response = await TestRequest.delete(
+      `/api/products/${product.id}`,
+      "test_token",
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(403);
+    expect(body.errors).toBeDefined();
+  });
+
+  it("should reject delete product if user token is invalid", async () => {
+    await UserTest.createAdmin();
+
+    const product = await ProductTest.create();
+
+    const response = await TestRequest.delete(
+      `/api/products/${product.id}`,
+      "wrong_token",
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(401);
+    expect(body.errors).toBeDefined();
+  });
+});

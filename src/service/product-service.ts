@@ -150,4 +150,20 @@ export class ProductsService {
 
     return toProductResponse(product);
   }
+
+  static async remove(user: User, id: number): Promise<ProductResponse> {
+    if (user.role !== "admin") {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    const product = await this.checkProductExist(id);
+
+    await prismaClient.product.delete({
+      where: {
+        id: id,
+      },
+    });
+
+    return toProductResponse(product);
+  }
 }

@@ -26,3 +26,4 @@ apiRouter.use("/api/products/*", adminMiddleware);
 // Product API
 apiRouter.post("/api/products", ProductController.create);
 apiRouter.patch("/api/products/:id", ProductController.update);
+apiRouter.delete("/api/products/:id", ProductController.remove);
