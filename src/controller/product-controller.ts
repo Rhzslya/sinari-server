@@ -134,11 +134,7 @@ export class ProductController {
         page: c.req.query("page") ? Number(c.req.query("page")) : 1,
         size: c.req.query("size") ? Number(c.req.query("size")) : 10,
 
-        sort_by: c.req.query("sort_by") as
-          | "name"
-          | "price"
-          | "stock"
-          | "created_at",
+        sort_by: c.req.query("sort_by") as "price" | "stock" | "created_at",
         sort_order: c.req.query("sort_order") as "asc" | "desc",
       };
 

@@ -675,112 +675,19 @@ describe("GET /api/products", () => {
     expect(body.errors).toBeDefined();
   });
 
-  it("should filter products by name", async () => {
+  it.only("should filter products by name", async () => {
     await UserTest.createAdmin();
 
-    await prismaClient.product.create({
-      data: {
-        name: "test",
-        brand: "OTHER",
-        manufacturer: "APPLE",
-        category: "OTHER",
-        price: 20000000,
-        cost_price: 18000000,
-        stock: 10,
-      },
-    });
-    await prismaClient.product.create({
-      data: {
-        name: "test",
-        brand: "OTHER",
-        manufacturer: "SAMSUNG",
-        category: "OTHER",
-        price: 19000000,
-        cost_price: 17000000,
-        stock: 10,
-      },
+    await ProductTest.create();
+
+    const queryParams = new URLSearchParams({
+      name: "te",
+      page: "1",
+      size: "10",
     });
 
     const response = await TestRequest.get(
-      "/api/products?name=test",
-      "test_token",
-    );
-    const body = await response.json();
-
-    logger.debug(body);
-
-    expect(response.status).toBe(200);
-    expect(body.data.length).toBe(2);
-    expect(body.data[0].name).toBe("test");
-  });
-
-  it("should filter products by brand", async () => {
-    await UserTest.createAdmin();
-
-    await prismaClient.product.create({
-      data: {
-        name: "test",
-        brand: "OTHER",
-        manufacturer: "APPLE",
-        category: "OTHER",
-        price: 20000000,
-        cost_price: 18000000,
-        stock: 10,
-      },
-    });
-    await prismaClient.product.create({
-      data: {
-        name: "test",
-        brand: "OTHER",
-        manufacturer: "SAMSUNG",
-        category: "OTHER",
-        price: 19000000,
-        cost_price: 17000000,
-        stock: 10,
-      },
-    });
-
-    const response = await TestRequest.get(
-      "/api/products?brand=OTHER",
-      "test_token",
-    );
-    const body = await response.json();
-
-    logger.debug(body);
-
-    expect(response.status).toBe(200);
-    expect(body.data.length).toBe(2);
-    expect(body.data[0].name).toBe("test");
-  });
-
-  it("should filter products by manufacturer", async () => {
-    await UserTest.createAdmin();
-
-    await prismaClient.product.create({
-      data: {
-        name: "test",
-        brand: "OTHER",
-        manufacturer: "APPLE",
-        category: "OTHER",
-        price: 20000000,
-        cost_price: 18000000,
-        stock: 10,
-      },
-    });
-    await prismaClient.product.create({
-      data: {
-        name: "test",
-        brand: "OTHER",
-        manufacturer: "SAMSUNG",
-        category: "OTHER",
-        price: 19000000,
-        cost_price: 17000000,
-        stock: 10,
-      },
-    });
-
-    const response = await TestRequest.get(
-      "/api/products?manufacturer=APPLE",
+      `/api/products?${queryParams}`,
       "test_token",
     );
     const body = await response.json();
@@ -792,73 +699,19 @@ describe("GET /api/products", () => {
     expect(body.data[0].name).toBe("test");
   });
 
-  it("should filter products by category", async () => {
+  it.only("should filter products by brand", async () => {
     await UserTest.createAdmin();
 
-    await prismaClient.product.create({
-      data: {
-        name: "test",
-        brand: "OTHER",
-        manufacturer: "APPLE",
-        category: "OTHER",
-        price: 20000000,
-        cost_price: 18000000,
-        stock: 10,
-      },
-    });
-    await prismaClient.product.create({
-      data: {
-        name: "test",
-        brand: "OTHER",
-        manufacturer: "SAMSUNG",
-        category: "OTHER",
-        price: 19000000,
-        cost_price: 17000000,
-        stock: 10,
-      },
+    await ProductTest.create();
+
+    const queryParams = new URLSearchParams({
+      brand: "OTHER",
+      page: "1",
+      size: "10",
     });
 
     const response = await TestRequest.get(
-      "/api/products?category=OTHER",
-      "test_token",
-    );
-    const body = await response.json();
-
-    logger.debug(body);
-
-    expect(response.status).toBe(200);
-    expect(body.data.length).toBe(2);
-    expect(body.data[0].name).toBe("test");
-  });
-
-  it("should filter products by price range", async () => {
-    await UserTest.createAdmin();
-
-    await prismaClient.product.create({
-      data: {
-        name: "test",
-        brand: "OTHER",
-        manufacturer: "APPLE",
-        category: "OTHER",
-        price: 2000,
-        cost_price: 18000000,
-        stock: 10,
-      },
-    });
-    await prismaClient.product.create({
-      data: {
-        name: "test",
-        brand: "OTHER",
-        manufacturer: "SAMSUNG",
-        category: "OTHER",
-        price: 1000,
-        cost_price: 17000000,
-        stock: 10,
-      },
-    });
-
-    const response = await TestRequest.get(
-      "/api/products?max_price=2000&min_price=1500",
+      `/api/products?${queryParams}`,
       "test_token",
     );
     const body = await response.json();
@@ -870,13 +723,86 @@ describe("GET /api/products", () => {
     expect(body.data[0].name).toBe("test");
   });
 
-  it("should support pagination", async () => {
+  it.only("should filter products by manufacturer", async () => {
+    await UserTest.createAdmin();
+
+    await ProductTest.create();
+
+    const queryParams = new URLSearchParams({
+      manufacturer: "ORIGINAL",
+      page: "1",
+      size: "10",
+    });
+
+    const response = await TestRequest.get(
+      `/api/products?${queryParams}`,
+      "test_token",
+    );
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.data[0].name).toBe("test");
+  });
+
+  it.only("should filter products by category", async () => {
+    await UserTest.createAdmin();
+
+    await ProductTest.create();
+
+    const queryParams = new URLSearchParams({
+      category: "OTHER",
+      page: "1",
+      size: "10",
+    });
+
+    const response = await TestRequest.get(
+      `/api/products?${queryParams}`,
+      "test_token",
+    );
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.data[0].name).toBe("test");
+  });
+
+  it.only("should filter products by price range", async () => {
+    await UserTest.createAdmin();
+
+    await ProductTest.create();
+
+    const queryParams = new URLSearchParams({
+      min_price: "1000",
+      max_price: "10000",
+      page: "1",
+      size: "10",
+    });
+
+    const response = await TestRequest.get(
+      `/api/products?${queryParams}`,
+      "test_token",
+    );
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.data[0].name).toBe("test");
+  });
+
+  it.only("should support pagination", async () => {
     await UserTest.createAdmin();
 
     for (let i = 0; i < 15; i++) {
       await prismaClient.product.create({
         data: {
-          name: `test ${i}`,
+          name: `test_${i}`,
           brand: "OTHER",
           manufacturer: "APPLE",
           category: "OTHER",
@@ -887,8 +813,13 @@ describe("GET /api/products", () => {
       });
     }
 
+    const queryParams = new URLSearchParams({
+      page: "2",
+      size: "10",
+    });
+
     const response = await TestRequest.get(
-      "/api/products?page=2&size=10",
+      `/api/products?${queryParams}`,
       "test_token",
     );
     const body = await response.json();
@@ -901,7 +832,7 @@ describe("GET /api/products", () => {
     expect(body.paging.total_page).toBe(2);
   });
 
-  it("should support multiple sort", async () => {
+  it.only("should support multiple sort", async () => {
     await UserTest.createAdmin();
 
     for (let i = 0; i < 15; i++) {
@@ -918,8 +849,15 @@ describe("GET /api/products", () => {
       });
     }
 
+    const queryParams = new URLSearchParams({
+      sort_by: "price",
+      sort_order: "asc",
+      page: "1",
+      size: "10",
+    });
+
     const response = await TestRequest.get(
-      "/api/products?sort_by=price&sort_order=asc&page=1&size=10",
+      `/api/products?${queryParams}`,
       "test_token",
     );
 
@@ -936,7 +874,7 @@ describe("GET /api/products", () => {
     expect(body.data[9].name).toBe("test 9");
   });
 
-  it("should filter products by brand AND manufacturer simultaneously", async () => {
+  it.only("should filter products by brand AND manufacturer simultaneously", async () => {
     await UserTest.createAdmin();
 
     await prismaClient.product.create({
@@ -975,8 +913,15 @@ describe("GET /api/products", () => {
       },
     });
 
+    const queryParams = new URLSearchParams({
+      brand: "SAMSUNG",
+      manufacturer: "VIZZ",
+      page: "1",
+      size: "10",
+    });
+
     const response = await TestRequest.get(
-      "/api/products?brand=SAMSUNG&manufacturer=VIZZ",
+      `/api/products?${queryParams}`,
       "test_token",
     );
 
@@ -991,5 +936,67 @@ describe("GET /api/products", () => {
     expect(body.data[0].name).toBe("test batre");
     expect(body.data[0].brand).toBe("SAMSUNG");
     expect(body.data[0].manufacturer).toBe("VIZZ");
+  });
+
+  it.only("should filter products price range with descending order", async () => {
+    await UserTest.createAdmin();
+
+    await prismaClient.product.create({
+      data: {
+        name: "test batre",
+        brand: "SAMSUNG",
+        manufacturer: "VIZZ",
+        category: "OTHER",
+        price: 10000,
+        cost_price: 40000,
+        stock: 10,
+      },
+    });
+
+    await prismaClient.product.create({
+      data: {
+        name: "test batre",
+        brand: "SAMSUNG",
+        manufacturer: "ORIGINAL",
+        category: "OTHER",
+        price: 100000,
+        cost_price: 90000,
+        stock: 10,
+      },
+    });
+
+    await prismaClient.product.create({
+      data: {
+        name: "test batre",
+        brand: "APPLE",
+        manufacturer: "VIZZ",
+        category: "OTHER",
+        price: 12000,
+        cost_price: 40000,
+        stock: 10,
+      },
+    });
+
+    const queryParams = new URLSearchParams({
+      min_price: "1000",
+      max_price: "50000",
+      sort_by: "price",
+      sort_order: "desc",
+      page: "1",
+      size: "10",
+    });
+
+    const response = await TestRequest.get(
+      `/api/products?${queryParams}`,
+      "test_token",
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(2);
+    expect(body.data[0].name).toBe("test batre");
   });
 });

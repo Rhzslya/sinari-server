@@ -35,7 +35,7 @@ export class ProductValidation {
     in_stock_only: z.coerce.boolean().optional(),
     page: z.coerce.number().min(1).positive().default(1),
     size: z.coerce.number().min(1).max(100).positive().default(10),
-    sort_by: z.enum(["name", "price", "stock", "created_at"]).optional(),
+    sort_by: z.enum(["price", "stock", "created_at"]).optional(),
     sort_order: z.enum(["asc", "desc"]).optional(),
   });
 }

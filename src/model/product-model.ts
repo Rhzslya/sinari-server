@@ -54,7 +54,7 @@ export type SearchProductRequest = {
   in_stock_only?: boolean;
   page: number;
   size: number;
-  sort_by?: "name" | "price" | "stock" | "created_at";
+  sort_by?: "price" | "stock" | "created_at";
   sort_order?: "asc" | "desc";
 };
 
