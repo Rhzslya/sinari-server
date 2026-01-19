@@ -85,7 +85,7 @@ describe("POST /api/products", () => {
     await ProductTest.create();
 
     const requestBody: CreateProductRequest = {
-      name: "test product",
+      name: "test",
       brand: "OTHER",
       manufacturer: "ORIGINAL",
       category: "OTHER",
@@ -342,7 +342,7 @@ describe("PATCH /api/products/:id", () => {
     logger.debug(body);
 
     expect(response.status).toBe(200);
-    expect(body.data.name).toBe("test product");
+    expect(body.data.name).toBe("test");
     expect(body.data.brand).toBe("SAMSUNG");
     expect(body.data.manufacturer).toBe("MEETOO");
     expect(body.data.category).toBe("LCD");
@@ -377,7 +377,7 @@ describe("PATCH /api/products/:id", () => {
     logger.debug(body);
 
     expect(response.status).toBe(200);
-    expect(body.data.name).toBe("test product");
+    expect(body.data.name).toBe("test");
     expect(body.data.brand).toBe("SAMSUNG");
     expect(body.data.manufacturer).toBe("MEETOO");
     expect(body.data.category).toBe("LCD");
@@ -414,7 +414,7 @@ describe("PATCH /api/products/:id", () => {
     logger.debug(body);
 
     expect(response.status).toBe(200);
-    expect(body.data.name).toBe("test product");
+    expect(body.data.name).toBe("test");
     expect(body.data.brand).toBe("SAMSUNG");
     expect(body.data.manufacturer).toBe("MEETOO");
     expect(body.data.category).toBe("LCD");
@@ -460,7 +460,7 @@ describe("PATCH /api/products/:id", () => {
 
     const requestBody: UpdateProductRequest = {
       id: product.id,
-      name: "test product",
+      name: "test",
       brand: "OTHER",
       manufacturer: "original",
       category: "OTHER",
@@ -675,7 +675,7 @@ describe("GET /api/products", () => {
     expect(body.errors).toBeDefined();
   });
 
-  it.only("should filter products by name", async () => {
+  it("should filter products by name", async () => {
     await UserTest.createAdmin();
 
     await ProductTest.create();
@@ -699,7 +699,7 @@ describe("GET /api/products", () => {
     expect(body.data[0].name).toBe("test");
   });
 
-  it.only("should filter products by brand", async () => {
+  it("should filter products by brand", async () => {
     await UserTest.createAdmin();
 
     await ProductTest.create();
@@ -723,7 +723,7 @@ describe("GET /api/products", () => {
     expect(body.data[0].name).toBe("test");
   });
 
-  it.only("should filter products by manufacturer", async () => {
+  it("should filter products by manufacturer", async () => {
     await UserTest.createAdmin();
 
     await ProductTest.create();
@@ -747,7 +747,7 @@ describe("GET /api/products", () => {
     expect(body.data[0].name).toBe("test");
   });
 
-  it.only("should filter products by category", async () => {
+  it("should filter products by category", async () => {
     await UserTest.createAdmin();
 
     await ProductTest.create();
@@ -771,7 +771,7 @@ describe("GET /api/products", () => {
     expect(body.data[0].name).toBe("test");
   });
 
-  it.only("should filter products by price range", async () => {
+  it("should filter products by price range", async () => {
     await UserTest.createAdmin();
 
     await ProductTest.create();
@@ -796,7 +796,7 @@ describe("GET /api/products", () => {
     expect(body.data[0].name).toBe("test");
   });
 
-  it.only("should support pagination", async () => {
+  it("should support pagination", async () => {
     await UserTest.createAdmin();
 
     for (let i = 0; i < 15; i++) {
@@ -832,7 +832,7 @@ describe("GET /api/products", () => {
     expect(body.paging.total_page).toBe(2);
   });
 
-  it.only("should support multiple sort", async () => {
+  it("should support multiple sort", async () => {
     await UserTest.createAdmin();
 
     for (let i = 0; i < 15; i++) {
@@ -874,7 +874,7 @@ describe("GET /api/products", () => {
     expect(body.data[9].name).toBe("test 9");
   });
 
-  it.only("should filter products by brand AND manufacturer simultaneously", async () => {
+  it("should filter products by brand AND manufacturer simultaneously", async () => {
     await UserTest.createAdmin();
 
     await prismaClient.product.create({
@@ -938,7 +938,7 @@ describe("GET /api/products", () => {
     expect(body.data[0].manufacturer).toBe("VIZZ");
   });
 
-  it.only("should filter products price range with descending order", async () => {
+  it("should filter products price range with descending order", async () => {
     await UserTest.createAdmin();
 
     await prismaClient.product.create({

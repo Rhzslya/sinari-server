@@ -961,7 +961,7 @@ describe("GET /api/services", () => {
     expect(body.paging.size).toBe(10);
   });
 
-  it.only("should support multiple sort", async () => {
+  it("should support multiple sort", async () => {
     await UserTest.createAdminGoogle();
 
     await prismaClient.service.create({
