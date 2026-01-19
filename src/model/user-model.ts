@@ -37,6 +37,11 @@ export type UpdateUserRequest = {
   current_password?: string;
 };
 
+export type EmailVerificationResponse = {
+  email: string;
+  message: string;
+};
+
 export function toUserResponse(user: User): UserResponse {
   return {
     username: user.username,
@@ -52,4 +57,27 @@ export function toUserResponseWithToken(user: User): UserResponse {
     google_id: user.google_id,
     token: user.token,
   };
+}
+
+export function toEmailVerificationResponse(
+  email: string,
+): EmailVerificationResponse {
+  return {
+    email: maskEmail(email),
+    message: "Verification email has been sent successfully",
+  };
+}
+
+export function maskEmail(email: string): string {
+  if (!email || !email.includes("@")) return email;
+
+  const [localPart, domain] = email.split("@");
+
+  if (localPart.length <= 2) {
+    return `${localPart}*****@${domain}`;
+  }
+
+  const maskedLocal = localPart.substring(0, 3) + "*".repeat(5);
+
+  return `${maskedLocal}@${domain}`;
 }

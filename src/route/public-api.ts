@@ -10,6 +10,9 @@ publicRouter.post("/api/users", (c) => UserController.register(c));
 publicRouter.post("/api/auth/login", (c) => UserController.login(c));
 publicRouter.post("/api/auth/google", (c) => UserController.loginWithGoogle(c));
 publicRouter.get("/api/auth/verify", (c) => UserController.verify(c));
+publicRouter.get("/api/auth/resend-verify", (c) =>
+  UserController.resendVerification(c),
+);
 
 // Repair Public Routes
 publicRouter.get(

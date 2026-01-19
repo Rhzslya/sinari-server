@@ -99,4 +99,22 @@ export class UserController {
       throw error;
     }
   }
+
+  static async resendVerification(c: Context) {
+    try {
+      const identifier = c.req.query("email") || c.req.query("username");
+
+      if (!identifier) {
+        throw new ResponseError(400, "Email or Username is required");
+      }
+
+      const response = await UserService.resendVerificationMail(identifier);
+
+      return c.json({
+        data: response,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
 }

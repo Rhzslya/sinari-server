@@ -3,10 +3,12 @@ import { prismaClient } from "../application/database";
 import { logger } from "../application/logging";
 import { ResponseError } from "../error/response-error";
 import {
+  toEmailVerificationResponse,
   toUserResponse,
   toUserResponseWithToken,
   type CreateUserRequest,
   type CreateUserWithGoogleRequest,
+  type EmailVerificationResponse,
   type LoginUserRequest,
   type UpdateUserRequest,
   type UserResponse,
@@ -18,12 +20,13 @@ import bcrypt from "bcrypt";
 import { v4 as uuid } from "uuid";
 import type { User } from "../../generated/prisma/client";
 import type { GooglePayload } from "../type/google-type";
+import { Mail } from "../utils/mail";
 
 export class UserService {
   static async register(request: CreateUserRequest): Promise<UserResponse> {
     const registerRequest = Validation.validate(
       UserValidation.REGISTER,
-      request
+      request,
     );
 
     const totalUserWithSameUsername = await prismaClient.user.count({
@@ -50,13 +53,22 @@ export class UserService {
 
     const verifyToken = uuid();
 
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 10);
+
     const user = await prismaClient.user.create({
       data: {
         ...registerRequest,
         verify_token: verifyToken,
         is_verified: false,
+        verify_expires_at: expiresAt,
       },
     });
+
+    await Mail.sendVerificationMail(
+      user.email!,
+      user.verify_token!,
+      user.name!,
+    );
 
     return toUserResponse(user);
   }
@@ -78,16 +90,22 @@ export class UserService {
     }
 
     if (!user.is_verified) {
-      throw new ResponseError(403, "Please verify your email address first");
+      throw new ResponseError(
+        403,
+        "Your account is not verified. Please verify your email.",
+      );
     }
 
-    if (!user.password) {
-      throw new ResponseError(401, "Username or password is wrong");
+    if (!user.is_verified) {
+      throw new ResponseError(
+        403,
+        "Your account is not verified. Please verify your email.",
+      );
     }
 
     const isPasswordCorrect = await bcrypt.compare(
       loginRequest.password,
-      user.password!
+      user.password!,
     );
     if (!isPasswordCorrect) {
       throw new ResponseError(401, "Username or password is wrong");
@@ -115,7 +133,7 @@ export class UserService {
 
   static async update(
     user: User,
-    request: UpdateUserRequest
+    request: UpdateUserRequest,
   ): Promise<UserResponse> {
     const updateRequest = Validation.validate(UserValidation.UPDATE, request);
 
@@ -145,7 +163,7 @@ export class UserService {
 
         const isCurrentPasswordCorrect = await bcrypt.compare(
           updateRequest.current_password,
-          user.password
+          user.password,
         );
 
         if (!isCurrentPasswordCorrect) {
@@ -182,12 +200,12 @@ export class UserService {
   }
 
   static async loginWithGoogle(
-    request: CreateUserWithGoogleRequest
+    request: CreateUserWithGoogleRequest,
   ): Promise<UserResponse> {
     // 1. DATA VALIDATION
     const validatedRequest = Validation.validate(
       UserValidation.GOOGLE_LOGIN,
-      request
+      request,
     );
 
     // 2. GOOGLE VERIFICATION TOKEN
@@ -208,7 +226,7 @@ export class UserService {
       if (!user.google_id) {
         throw new ResponseError(
           409,
-          `We found an existing account for '${googlePayload.email}'. Sign-in using your password.`
+          `We found an existing account for '${googlePayload.email}'. Sign-in using your password.`,
         );
       }
 
@@ -237,7 +255,7 @@ export class UserService {
 
   // --- PRIVATE HELPER ---
   private static async registerNewGoogleUser(
-    googlePayload: GooglePayload
+    googlePayload: GooglePayload,
   ): Promise<User> {
     let username = googlePayload.email.split("@")[0];
     let isCreated = false;
@@ -278,7 +296,7 @@ export class UserService {
             if (isGoogleIdCollision) {
               throw new ResponseError(
                 409,
-                "This Google Account is already linked to another user."
+                "This Google Account is already linked to another user.",
               );
             }
 
@@ -291,11 +309,11 @@ export class UserService {
             if (isUsernameCollision) {
               const baseName = googlePayload.email.split("@")[0];
               username = `${baseName}-${Math.floor(
-                1000 + Math.random() * 9000
+                1000 + Math.random() * 9000,
               )}`;
 
               logger.info(
-                `Username collision detected. Retrying with: ${username}`
+                `Username collision detected. Retrying with: ${username}`,
               );
 
               retryCount++;
@@ -325,6 +343,10 @@ export class UserService {
       throw new ResponseError(404, "Invalid or expired verification token");
     }
 
+    if (user.verify_expires_at && new Date() > user.verify_expires_at) {
+      throw new ResponseError(404, "Invalid or expired verification token");
+    }
+
     await prismaClient.user.update({
       where: {
         id: user.id,
@@ -332,9 +354,91 @@ export class UserService {
       data: {
         is_verified: true,
         verify_token: null,
+        verify_expires_at: null,
       },
     });
 
     return true;
   }
+
+  static async resendVerificationMail(
+    identifier: string,
+  ): Promise<EmailVerificationResponse> {
+    const user = await prismaClient.user.findFirst({
+      where: {
+        OR: [{ email: identifier }, { username: identifier }],
+      },
+    });
+
+    if (!user) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    if (user.is_verified) {
+      throw new ResponseError(400, "Account already verified");
+    }
+
+    let currentCount = user.resend_count;
+
+    if (!user.last_resend_time) {
+      const lastDateISO = new Date(user.last_resend_time!)
+        .toISOString()
+        .split("T")[0];
+      const todayISO = new Date().toISOString().split("T")[0];
+
+      if (lastDateISO !== todayISO) {
+        currentCount = 0;
+      }
+    }
+
+    if (currentCount >= this.MAX_DAILY_RESEND) {
+      throw new ResponseError(
+        400,
+        `Daily limit reached (${this.MAX_DAILY_RESEND}/${this.MAX_DAILY_RESEND}). Please try again tomorrow.`,
+      );
+    }
+
+    if (user.verify_expires_at) {
+      const lastTokenCreatedAt =
+        user.verify_expires_at.getTime() - this.TOKEN_DURATION_MS;
+
+      const timeSinceLastRequest = Date.now() - lastTokenCreatedAt;
+
+      if (timeSinceLastRequest < this.COOLDOWN_MS) {
+        const remainingSeconds = Math.ceil(
+          (this.COOLDOWN_MS - timeSinceLastRequest) / 1000,
+        );
+        throw new ResponseError(
+          400,
+          `Please wait ${remainingSeconds} seconds before resending.`,
+        );
+      }
+    }
+
+    const newVerifyToken = uuid();
+
+    const expiresAt = new Date(Date.now() + this.TOKEN_DURATION_MS);
+
+    await prismaClient.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        verify_token: newVerifyToken,
+        verify_expires_at: expiresAt,
+        resend_count: currentCount + 1,
+        last_resend_time: new Date(),
+      },
+    });
+
+    await Mail.sendVerificationMail(user.email!, newVerifyToken, user.name!);
+
+    return toEmailVerificationResponse(user.email!);
+  }
+
+  private static readonly TOKEN_DURATION_MS = 10 * 60 * 1000;
+
+  private static readonly COOLDOWN_MS = 60 * 1000;
+
+  private static readonly MAX_DAILY_RESEND = 5;
 }

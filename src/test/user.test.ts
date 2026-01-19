@@ -28,7 +28,7 @@ describe("POST /api/users", () => {
 
     const response = await TestRequest.post<CreateUserRequest>(
       "/api/users",
-      requestBody
+      requestBody,
     );
 
     const body = await response.json();
@@ -51,7 +51,7 @@ describe("POST /api/users", () => {
 
     const response = await TestRequest.post<CreateUserRequest>(
       "/api/users",
-      requestBody
+      requestBody,
     );
 
     const body = await response.json();
@@ -74,7 +74,7 @@ describe("POST /api/users", () => {
 
     const response = await TestRequest.post<CreateUserRequest>(
       "/api/users",
-      requestBody
+      requestBody,
     );
 
     const body = await response.json();
@@ -97,7 +97,7 @@ describe("POST /api/users", () => {
 
     const response = await TestRequest.post<CreateUserRequest>(
       "/api/users",
-      requestBody
+      requestBody,
     );
 
     const body = await response.json();
@@ -127,7 +127,7 @@ describe("POST /api/auth/login", () => {
 
     const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
-      requestBody
+      requestBody,
     );
 
     const body = await response.json();
@@ -148,7 +148,7 @@ describe("POST /api/auth/login", () => {
 
     const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
-      requestBody
+      requestBody,
     );
 
     const body = await response.json();
@@ -171,7 +171,7 @@ describe("POST /api/auth/login", () => {
 
     const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
-      requestBody
+      requestBody,
     );
 
     const body = await response.json();
@@ -179,7 +179,9 @@ describe("POST /api/auth/login", () => {
     logger.debug(body);
 
     expect(response.status).toBe(403);
-    expect(body.errors).toBe("Please verify your email address first");
+    expect(body.errors).toBe(
+      "Your account is not verified. Please verify your email.",
+    );
   });
 
   it("should reject login if username is wrong", async () => {
@@ -190,7 +192,7 @@ describe("POST /api/auth/login", () => {
 
     const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
-      requestBody
+      requestBody,
     );
 
     const body = await response.json();
@@ -209,7 +211,7 @@ describe("POST /api/auth/login", () => {
 
     const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
-      requestBody
+      requestBody,
     );
 
     const body = await response.json();
@@ -228,7 +230,7 @@ describe("POST /api/auth/login", () => {
 
     const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
-      requestBody
+      requestBody,
     );
 
     const body = await response.json();
@@ -247,7 +249,7 @@ describe("POST /api/auth/login", () => {
 
     const response = await TestRequest.post<LoginUserRequest>(
       "/api/auth/login",
-      requestBody
+      requestBody,
     );
 
     const body = await response.json();
@@ -317,7 +319,7 @@ describe("PATCH /api/users/current", () => {
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -336,7 +338,7 @@ describe("PATCH /api/users/current", () => {
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -356,7 +358,7 @@ describe("PATCH /api/users/current", () => {
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -378,7 +380,7 @@ describe("PATCH /api/users/current", () => {
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -403,7 +405,7 @@ describe("PATCH /api/users/current", () => {
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -426,7 +428,7 @@ describe("PATCH /api/users/current", () => {
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -447,7 +449,7 @@ describe("PATCH /api/users/current", () => {
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "wrong_token"
+      "wrong_token",
     );
 
     const body = await response.json();
@@ -466,7 +468,7 @@ describe("PATCH /api/users/current", () => {
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token"
+      "test_token",
     );
 
     const body = await response.json();
@@ -504,7 +506,7 @@ describe("DELETE /api/auth/logout", () => {
   it("should reject logout user if token is wrong", async () => {
     const response = await TestRequest.delete(
       "/api/auth/logout",
-      "wrong_token"
+      "wrong_token",
     );
 
     const body = await response.json();
