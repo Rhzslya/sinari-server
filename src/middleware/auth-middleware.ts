@@ -4,7 +4,7 @@ import type { ApplicationVariables } from "../type/hono-context";
 
 export const authMiddleware = async (
   c: Context<{ Variables: ApplicationVariables }>,
-  next: Next
+  next: Next,
 ) => {
   const authHeader = c.req.header("Authorization");
 
@@ -13,7 +13,7 @@ export const authMiddleware = async (
       {
         errors: "Unauthorized",
       },
-      401
+      401,
     );
   }
 
@@ -24,7 +24,7 @@ export const authMiddleware = async (
       {
         errors: "Unauthorized",
       },
-      401
+      401,
     );
   }
 
@@ -39,8 +39,40 @@ export const authMiddleware = async (
       {
         errors: "Unauthorized",
       },
-      401
+      401,
     );
+  }
+
+  if (user.token_expired_at) {
+    const now = new Date().getTime();
+    const expiredTime = user.token_expired_at.getTime();
+
+    if (now > expiredTime) {
+      await prismaClient.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          token: null,
+          token_expired_at: null,
+        },
+      });
+
+      return c.json({ errors: "Token Expired" }, 401);
+    }
+
+    const threshold = 23 * 60 * 60 * 1000;
+
+    if (expiredTime - now < threshold) {
+      await prismaClient.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          token_expired_at: new Date(now + 24 * 60 * 60 * 1000),
+        },
+      });
+    }
   }
 
   c.set("user", user);

@@ -12,7 +12,7 @@ apiRouter.use(authMiddleware);
 // User API
 apiRouter.get("/api/users/current", UserController.get);
 apiRouter.patch("/api/users/current", UserController.update);
-apiRouter.delete("/api/auth/logout", UserController.logout);
+apiRouter.delete("/api/users/logout", UserController.logout);
 
 apiRouter.use("/api/services/*", adminMiddleware);
 // Service API

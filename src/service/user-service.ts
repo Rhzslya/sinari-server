@@ -96,13 +96,6 @@ export class UserService {
       );
     }
 
-    if (!user.is_verified) {
-      throw new ResponseError(
-        403,
-        "Your account is not verified. Please verify your email.",
-      );
-    }
-
     const isPasswordCorrect = await bcrypt.compare(
       loginRequest.password,
       user.password!,
@@ -111,7 +104,7 @@ export class UserService {
       throw new ResponseError(401, "Username or password is wrong");
     }
 
-    logger.info(user.password);
+    const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     user = await prismaClient.user.update({
       where: {
@@ -119,11 +112,11 @@ export class UserService {
       },
       data: {
         token: uuid(),
+        token_expired_at: expiredAt,
       },
     });
 
     const response = toUserResponse(user);
-    response.token = user.token!;
     return response;
   }
 

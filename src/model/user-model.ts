@@ -48,6 +48,7 @@ export function toUserResponse(user: User): UserResponse {
     email: user.email,
     name: user.name,
     role: user.role,
+    token: user.token,
   };
 }
 

@@ -22,7 +22,9 @@ model User {
   password      String?   @db.VarChar(100) // optional if google login
   name          String    @db.VarChar(100)
   role          String    @default("customer") @db.VarChar(100)
+
   token         String?   @db.VarChar(100)
+  token_expired_at DateTime?
 
   is_verified    Boolean   @default(false)
   verify_token   String?   @db.VarChar(100)

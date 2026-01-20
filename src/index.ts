@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { publicRouter } from "./route/public-api";
 import { errorMiddleware } from "./middleware/error-middleware";
+import { apiRouter } from "./route/api";
 
 const app = new Hono();
 
@@ -12,6 +13,7 @@ app.get("/", (c) => {
 });
 
 app.route("/", publicRouter);
+app.route("/", apiRouter);
 
 app.onError(errorMiddleware);
 

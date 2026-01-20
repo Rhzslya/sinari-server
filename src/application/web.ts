@@ -33,7 +33,7 @@ const authLimiter = rateLimiter({
   },
 });
 
-web.use("/api/users/login", authLimiter);
+web.use("/api/login", authLimiter);
 
 web.use("/api/*", generalLimiter);
 

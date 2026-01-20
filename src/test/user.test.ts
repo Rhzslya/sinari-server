@@ -9,6 +9,8 @@ import type {
 import bcrypt from "bcrypt";
 import { prismaClient } from "../application/database";
 
+// Comment One of this test becasue is reached register limiter or you can change the limiter
+
 describe("POST /api/users", () => {
   // beforeEach(async () => {
   //   await UserTest.create();
@@ -480,7 +482,7 @@ describe("PATCH /api/users/current", () => {
   });
 });
 
-describe("DELETE /api/auth/logout", () => {
+describe("DELETE /api/users/logout", () => {
   beforeEach(async () => {
     await UserTest.create();
   });
@@ -490,7 +492,10 @@ describe("DELETE /api/auth/logout", () => {
   });
 
   it("should logout user", async () => {
-    const response = await TestRequest.delete("/api/auth/logout", "test_token");
+    const response = await TestRequest.delete(
+      "/api/users/logout",
+      "test_token",
+    );
 
     const body = await response.json();
 
@@ -505,7 +510,7 @@ describe("DELETE /api/auth/logout", () => {
 
   it("should reject logout user if token is wrong", async () => {
     const response = await TestRequest.delete(
-      "/api/auth/logout",
+      "/api/users/logout",
       "wrong_token",
     );
 
