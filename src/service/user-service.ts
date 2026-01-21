@@ -4,12 +4,17 @@ import { logger } from "../application/logging";
 import { ResponseError } from "../error/response-error";
 import {
   toEmailVerificationResponse,
+  toForgotPasswordResponse,
   toUserResponse,
   toUserResponseWithToken,
   type CreateUserRequest,
   type CreateUserWithGoogleRequest,
   type EmailVerificationResponse,
+  type ForgotPasswordRequest,
+  type ForgotPasswordResponse,
   type LoginUserRequest,
+  type ResetPasswordRequest,
+  type ResetPasswordResponse,
   type UpdateUserRequest,
   type UserResponse,
 } from "../model/user-model";
@@ -89,19 +94,19 @@ export class UserService {
       throw new ResponseError(401, "Username or password is wrong");
     }
 
-    if (!user.is_verified) {
-      throw new ResponseError(
-        403,
-        "Your account is not verified. Please verify your email.",
-      );
-    }
-
     const isPasswordCorrect = await bcrypt.compare(
       loginRequest.password,
       user.password!,
     );
     if (!isPasswordCorrect) {
       throw new ResponseError(401, "Username or password is wrong");
+    }
+
+    if (!user.is_verified) {
+      throw new ResponseError(
+        403,
+        "Your account is not verified. Please verify your email.",
+      );
     }
 
     const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -354,6 +359,12 @@ export class UserService {
     return true;
   }
 
+  private static readonly TOKEN_DURATION_MS = 10 * 60 * 1000;
+
+  private static readonly COOLDOWN_MS = 60 * 1000;
+
+  private static readonly MAX_DAILY_RESEND = 5;
+
   static async resendVerificationMail(
     identifier: string,
   ): Promise<EmailVerificationResponse> {
@@ -386,7 +397,7 @@ export class UserService {
 
     if (currentCount >= this.MAX_DAILY_RESEND) {
       throw new ResponseError(
-        400,
+        429,
         `Daily limit reached (${this.MAX_DAILY_RESEND}/${this.MAX_DAILY_RESEND}). Please try again tomorrow.`,
       );
     }
@@ -429,9 +440,136 @@ export class UserService {
     return toEmailVerificationResponse(user.email!);
   }
 
-  private static readonly TOKEN_DURATION_MS = 10 * 60 * 1000;
+  private static readonly PASS_RESET_MAX_DAILY = 5;
 
-  private static readonly COOLDOWN_MS = 60 * 1000;
+  private static readonly PASS_RESET_COOLDOWN_MS = 60 * 1000;
 
-  private static readonly MAX_DAILY_RESEND = 5;
+  static async forgotPassword(
+    request: ForgotPasswordRequest,
+  ): Promise<ForgotPasswordResponse> {
+    const forgotPasswordRequest = Validation.validate(
+      UserValidation.FORGOT_PASSWORD,
+      request,
+    );
+
+    const identifier = forgotPasswordRequest.identifier;
+
+    const user = await prismaClient.user.findFirst({
+      where: {
+        OR: [{ email: identifier }, { username: identifier }],
+      },
+    });
+
+    if (!user) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    if (user.google_id && !user.password) {
+      throw new ResponseError(
+        400,
+        "This account uses Google Login. Please sign in with Google.",
+      );
+    }
+
+    let currentCount = user.pass_reset_count;
+
+    if (user.pass_reset_last_time) {
+      const lastDateISO = new Date(user.pass_reset_last_time)
+        .toISOString()
+        .split("T")[0];
+      const todayISO = new Date().toISOString().split("T")[0];
+
+      if (lastDateISO !== todayISO) {
+        currentCount = 0;
+      }
+    }
+
+    if (currentCount >= this.PASS_RESET_MAX_DAILY) {
+      throw new ResponseError(
+        429,
+        `Daily reset limit reached. Please try again tomorrow.`,
+      );
+    }
+
+    if (user.pass_reset_last_time) {
+      const timeSinceLastRequest =
+        Date.now() - new Date(user.pass_reset_last_time).getTime();
+
+      if (timeSinceLastRequest < this.PASS_RESET_COOLDOWN_MS) {
+        const remainingSeconds = Math.ceil(
+          (this.PASS_RESET_COOLDOWN_MS - timeSinceLastRequest) / 1000,
+        );
+        throw new ResponseError(
+          429,
+          `Please wait ${remainingSeconds} seconds before requesting another link.`,
+        );
+      }
+    }
+
+    const resetToken = uuid();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    await prismaClient.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        password_reset_token: resetToken,
+        password_reset_expires_at: expiresAt,
+        pass_reset_count: currentCount + 1,
+        pass_reset_last_time: new Date(),
+      },
+    });
+
+    await Mail.sendPasswordResetMail(user.email!, resetToken, user.name!);
+
+    return toForgotPasswordResponse(user.email!);
+  }
+
+  static async resetPassword(
+    request: ResetPasswordRequest,
+  ): Promise<ResetPasswordResponse> {
+    const resetPasswordRequest = Validation.validate(
+      UserValidation.RESET_PASSWORD,
+      request,
+    );
+
+    const user = await prismaClient.user.findFirst({
+      where: {
+        password_reset_token: resetPasswordRequest.token,
+      },
+    });
+
+    if (!user) {
+      throw new ResponseError(400, "Invalid or expired password reset token");
+    }
+
+    if (
+      user.password_reset_expires_at &&
+      new Date() > user.password_reset_expires_at
+    ) {
+      throw new ResponseError(400, "Invalid or expired password reset token");
+    }
+
+    const newPasswordHash = await bcrypt.hash(
+      resetPasswordRequest.new_password,
+      10,
+    );
+
+    await prismaClient.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        password: newPasswordHash,
+        password_reset_token: null,
+        password_reset_expires_at: null,
+      },
+    });
+
+    return {
+      message:
+        "Password has been successfully reset. Please login with your new password.",
+    };
+  }
 }

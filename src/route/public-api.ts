@@ -13,6 +13,12 @@ publicRouter.get("/api/auth/verify", (c) => UserController.verify(c));
 publicRouter.get("/api/auth/resend-verify", (c) =>
   UserController.resendVerification(c),
 );
+publicRouter.post("/api/auth/forgot-password", (c) =>
+  UserController.forgotPassword(c),
+);
+publicRouter.patch("/api/auth/reset-password", (c) =>
+  UserController.resetPassword(c),
+);
 
 // Repair Public Routes
 publicRouter.get(

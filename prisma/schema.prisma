@@ -23,11 +23,11 @@ model User {
   name          String    @db.VarChar(100)
   role          String    @default("customer") @db.VarChar(100)
 
-  token         String?   @db.VarChar(100)
+  token         String?   @unique @db.VarChar(100)
   token_expired_at DateTime?
 
   is_verified    Boolean   @default(false)
-  verify_token   String?   @db.VarChar(100)
+  verify_token   String?   @unique @db.VarChar(100)
   verify_expires_at DateTime?
 
   created_at DateTime @default(now())
@@ -35,6 +35,12 @@ model User {
   
   resend_count Int @default(0)
   last_resend_time DateTime?
+
+  password_reset_token      String?   @unique @db.VarChar(100)
+  password_reset_expires_at DateTime?
+
+  pass_reset_count    Int       @default(0)
+  pass_reset_last_time DateTime?
   
   @@map("users")
 }

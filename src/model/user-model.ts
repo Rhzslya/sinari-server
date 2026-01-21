@@ -42,6 +42,25 @@ export type EmailVerificationResponse = {
   message: string;
 };
 
+export type ForgotPasswordRequest = {
+  identifier: string;
+};
+
+export type ForgotPasswordResponse = {
+  email: string;
+  message: string;
+};
+
+export type ResetPasswordRequest = {
+  token: string;
+  new_password: string;
+  confirm_new_password: string;
+};
+
+export type ResetPasswordResponse = {
+  message: string;
+};
+
 export function toUserResponse(user: User): UserResponse {
   return {
     username: user.username,
@@ -66,6 +85,15 @@ export function toEmailVerificationResponse(
   return {
     email: maskEmail(email),
     message: "Verification email has been sent successfully",
+  };
+}
+
+export function toForgotPasswordResponse(
+  email: string,
+): EmailVerificationResponse {
+  return {
+    email: maskEmail(email),
+    message: "Forgot password Request has been sent successfully",
   };
 }
 

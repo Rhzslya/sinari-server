@@ -2,7 +2,9 @@ import type { Context } from "hono";
 import type {
   CreateUserRequest,
   CreateUserWithGoogleRequest,
+  ForgotPasswordRequest,
   LoginUserRequest,
+  ResetPasswordRequest,
   UpdateUserRequest,
 } from "../model/user-model";
 import { UserService } from "../service/user-service";
@@ -109,6 +111,34 @@ export class UserController {
       }
 
       const response = await UserService.resendVerificationMail(identifier);
+
+      return c.json({
+        data: response,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async forgotPassword(c: Context) {
+    try {
+      const request = (await c.req.json()) as ForgotPasswordRequest;
+
+      const response = await UserService.forgotPassword(request);
+
+      return c.json({
+        data: response,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async resetPassword(c: Context) {
+    try {
+      const request = (await c.req.json()) as ResetPasswordRequest;
+
+      const response = await UserService.resetPassword(request);
 
       return c.json({
         data: response,

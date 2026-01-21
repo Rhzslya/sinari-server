@@ -21,7 +21,17 @@ export class UserValidation {
     password: z.string().min(1).max(100),
   });
 
+  static readonly FORGOT_PASSWORD = z.object({
+    identifier: z.string().min(1).max(100),
+  });
+
   static readonly GOOGLE_LOGIN = z.object({
     token: z.string().min(1).max(100),
+  });
+
+  static readonly RESET_PASSWORD = z.object({
+    token: z.string().min(1).max(100),
+    new_password: z.string().min(1).max(100),
+    confirm_new_password: z.string().min(1).max(100),
   });
 }
