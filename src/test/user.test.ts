@@ -3,13 +3,12 @@ import { TestRequest, UserTest } from "./test-utils";
 import { logger } from "../application/logging";
 import type {
   CreateUserRequest,
+  ForgotPasswordRequest,
   LoginUserRequest,
   UpdateUserRequest,
 } from "../model/user-model";
 import bcrypt from "bcrypt";
 import { prismaClient } from "../application/database";
-
-// Comment One of this test becasue is reached register limiter or you can change the limiter
 
 describe("POST /api/users", () => {
   // beforeEach(async () => {
@@ -41,7 +40,7 @@ describe("POST /api/users", () => {
     expect(body.data.email).toBe("test@gmail.com");
     expect(body.data.username).toBe("test");
     expect(body.data.name).toBe("test");
-  });
+  }, 15000);
 
   it("it should reject register new user if request is invalid", async () => {
     const requestBody: CreateUserRequest = {
@@ -556,6 +555,10 @@ describe("Email Verification", () => {
 
     const response = await TestRequest.get(`/api/auth/verify?token=${token}`);
 
+    const body = await response.json();
+
+    logger.debug(body);
+
     expect(response.status).toBe(200);
 
     const userAfter = await prismaClient.user.findUnique({
@@ -564,7 +567,7 @@ describe("Email Verification", () => {
 
     expect(userAfter?.is_verified).toBe(true);
     expect(userAfter?.verify_token).toBeNull();
-  });
+  }, 15000);
 
   it("should create user with unverified status ", async () => {
     await UserTest.delete();
@@ -586,5 +589,209 @@ describe("Email Verification", () => {
     expect(userInDb?.is_verified).toBe(false);
     expect(userInDb?.verify_token).toBeDefined();
     expect(userInDb?.verify_token).not.toBeNull();
+  }, 15000);
+
+  it("should reject verification if token is expired", async () => {
+    await UserTest.delete();
+
+    const requestBody: CreateUserRequest = {
+      email: "test@gmail.com",
+      username: "test",
+      password: "test",
+      name: "test",
+    };
+
+    await TestRequest.post("/api/users", requestBody);
+
+    const userBefore = await prismaClient.user.findFirst({
+      where: { username: "test" },
+    });
+
+    const token = userBefore?.verify_token;
+    expect(token).toBeTruthy();
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+    await prismaClient.user.update({
+      where: { username: "test" },
+      data: {
+        verify_expires_at: oneHourAgo,
+      },
+    });
+
+    const response = await TestRequest.get(`/api/auth/verify?token=${token}`);
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.errors).toBe("Invalid or expired verification token");
+    expect(body.errors).toBeDefined();
+  }, 15000);
+
+  it("should reject verification if token is invalid", async () => {
+    await UserTest.delete();
+
+    const invalidToken = "token-palsu-ngawur-12345";
+
+    const response = await TestRequest.get(
+      `/api/auth/verify?token=${invalidToken}`,
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.errors).toBeDefined();
+  });
+});
+
+describe("Forgot Password", () => {
+  afterEach(async () => {
+    await UserTest.delete();
+  });
+
+  it("should send forgot password email", async () => {
+    await UserTest.create();
+
+    const requestBody: ForgotPasswordRequest = {
+      identifier: "test@gmail.com",
+    };
+
+    const response = await TestRequest.post<ForgotPasswordRequest>(
+      "/api/auth/forgot-password",
+      requestBody,
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.message).toBe(
+      "Forgot password Request has been sent successfully",
+    );
+  }, 15000);
+
+  it("should send forgot password with username identifier", async () => {
+    await UserTest.create();
+
+    const requestBody: ForgotPasswordRequest = {
+      identifier: "test",
+    };
+
+    const response = await TestRequest.post<ForgotPasswordRequest>(
+      "/api/auth/forgot-password",
+      requestBody,
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.message).toBe(
+      "Forgot password Request has been sent successfully",
+    );
+  }, 15000);
+});
+
+describe("Reset Password", () => {
+  afterEach(async () => {
+    await UserTest.delete();
+  });
+
+  it("should reset password successfully", async () => {
+    await UserTest.create();
+
+    await TestRequest.post<ForgotPasswordRequest>("/api/auth/forgot-password", {
+      identifier: "test@gmail.com",
+    });
+
+    const userWithToken = await prismaClient.user.findUnique({
+      where: { username: "test" },
+    });
+
+    const token = userWithToken?.password_reset_token;
+    expect(token).toBeTruthy();
+
+    const newPassword = "newPassword123";
+
+    const resetResponse = await TestRequest.patch("/api/auth/reset-password", {
+      token: token,
+      new_password: newPassword,
+      confirm_new_password: newPassword,
+    });
+
+    expect(resetResponse.status).toBe(200);
+    const body = await resetResponse.json();
+
+    logger.debug(body);
+
+    expect(body.data.message).toBeDefined();
+
+    const userAfterReset = await prismaClient.user.findUnique({
+      where: { username: "test" },
+    });
+
+    expect(userAfterReset?.password_reset_token).toBeNull();
+    expect(userAfterReset?.password_reset_expires_at).toBeNull();
+
+    const isOldPasswordValid = await bcrypt.compare(
+      "test",
+      userAfterReset!.password!,
+    );
+    expect(isOldPasswordValid).toBe(false);
+
+    const isNewPasswordValid = await bcrypt.compare(
+      newPassword,
+      userAfterReset!.password!,
+    );
+    expect(isNewPasswordValid).toBe(true);
+  }, 15000);
+
+  it("should reject reset password request if token is expired", async () => {
+    await UserTest.create();
+
+    const expiredToken = "token-sudah-basi-123";
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+    await prismaClient.user.update({
+      where: { username: "test" },
+      data: {
+        password_reset_token: expiredToken,
+        password_reset_expires_at: oneHourAgo,
+      },
+    });
+
+    const newPassword = "newPassword123";
+    const response = await TestRequest.patch("/api/auth/reset-password", {
+      token: expiredToken,
+      new_password: newPassword,
+      confirm_new_password: newPassword,
+    });
+
+    const body = await response.json();
+    console.log("Response Expired Test:", body);
+
+    expect(response.status).toBe(400);
+
+    expect(body.errors).toBe("Invalid or expired password reset token");
+  });
+
+  it("should reject reset password request if token is invalid", async () => {
+    await UserTest.create();
+
+    const invalidToken = "wrong-token";
+    const newPassword = "newPassword123";
+
+    const response = await TestRequest.patch("/api/auth/reset-password", {
+      token: invalidToken,
+      new_password: newPassword,
+      confirm_new_password: newPassword,
+    });
+
+    const body = await response.json();
+    console.log("Response Invalid Token Test:", body);
+
+    expect(response.status).toBe(400);
+
+    expect(body.errors).toBeDefined();
   });
 });

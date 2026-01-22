@@ -94,6 +94,13 @@ export class UserService {
       throw new ResponseError(401, "Username or password is wrong");
     }
 
+    if (!user.password) {
+      throw new ResponseError(
+        400,
+        "This account uses Google Login. Please sign in with Google.",
+      );
+    }
+
     const isPasswordCorrect = await bcrypt.compare(
       loginRequest.password,
       user.password!,
@@ -344,6 +351,8 @@ export class UserService {
     if (user.verify_expires_at && new Date() > user.verify_expires_at) {
       throw new ResponseError(404, "Invalid or expired verification token");
     }
+
+    logger.debug(user);
 
     await prismaClient.user.update({
       where: {

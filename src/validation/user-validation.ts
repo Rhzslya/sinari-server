@@ -26,7 +26,7 @@ export class UserValidation {
   });
 
   static readonly GOOGLE_LOGIN = z.object({
-    token: z.string().min(1).max(100),
+    token: z.string().min(1).max(2000),
   });
 
   static readonly RESET_PASSWORD = z.object({
