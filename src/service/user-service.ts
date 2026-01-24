@@ -573,6 +573,7 @@ export class UserService {
         password: newPasswordHash,
         password_reset_token: null,
         password_reset_expires_at: null,
+        is_verified: true,
       },
     });
 
