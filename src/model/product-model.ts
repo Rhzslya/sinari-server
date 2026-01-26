@@ -26,7 +26,7 @@ export type ProductPublicResponse = {
 export type CreateProductRequest = {
   name: string;
   brand: Brand;
-  manufacturer?: string;
+  manufacturer: string;
   price: number;
   cost_price: number;
   category?: Category;
