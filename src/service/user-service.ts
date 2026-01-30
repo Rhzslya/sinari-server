@@ -26,6 +26,7 @@ import { v4 as uuid } from "uuid";
 import type { User } from "../../generated/prisma/client";
 import type { GooglePayload } from "../type/google-type";
 import { Mail } from "../utils/mail";
+import { sign } from "hono/jwt";
 
 export class UserService {
   static async register(request: CreateUserRequest): Promise<UserResponse> {
@@ -116,6 +117,17 @@ export class UserService {
       );
     }
 
+    const payload = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      name: user.name,
+      email: user.email,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+    };
+
+    const jwtToken = await sign(payload, process.env.JWT_SECRET!);
+
     const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     user = await prismaClient.user.update({
@@ -123,12 +135,12 @@ export class UserService {
         id: user.id,
       },
       data: {
-        token: uuid(),
+        token: jwtToken,
         token_expired_at: expiredAt,
       },
     });
 
-    const response = toUserResponse(user);
+    const response = toUserResponse({ ...user, token: jwtToken });
     return response;
   }
 
@@ -239,14 +251,7 @@ export class UserService {
       if (user.google_id !== googlePayload.google_id) {
         throw new ResponseError(409, "Account conflict. Google ID mismatch.");
       }
-
-      // Update Token Session
-      user = await prismaClient.user.update({
-        where: { id: user.id },
-        data: { token: uuid() },
-      });
     } else {
-      // --- NEW USER SCENARIO ---
       user = await this.registerNewGoogleUser(googlePayload);
     }
 
@@ -255,7 +260,28 @@ export class UserService {
       throw new ResponseError(500, "Failed to process user data");
     }
 
-    return toUserResponseWithToken(user);
+    const payload = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      name: user.name,
+      email: user.email,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+    };
+
+    const jwtToken = await sign(payload, process.env.JWT_SECRET!, "HS256");
+
+    const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    user = await prismaClient.user.update({
+      where: { id: user.id },
+      data: {
+        token: jwtToken,
+        token_expired_at: expiredAt,
+      },
+    });
+
+    return toUserResponseWithToken({ ...user, token: jwtToken });
   }
 
   // --- PRIVATE HELPER ---
@@ -279,7 +305,7 @@ export class UserService {
             name: googlePayload.name,
             password: null,
             role: "customer",
-            token: uuid(),
+            token: null,
             is_verified: true,
             verify_token: null,
           },

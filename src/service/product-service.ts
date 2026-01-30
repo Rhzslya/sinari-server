@@ -18,7 +18,6 @@ import {
   type SearchProductRequest,
   type UpdateProductRequest,
 } from "../model/product-model";
-import type { SearchServiceRequest } from "../model/repair-model";
 import { ProductValidation } from "../validation/product-validation";
 import { Validation } from "../validation/validation";
 
@@ -191,7 +190,10 @@ export class ProductsService {
 
     if (searchRequest.name) {
       andFilters.push({
-        name: { contains: searchRequest.name },
+        OR: [
+          { name: { contains: searchRequest.name } },
+          { manufacturer: { contains: searchRequest.name } },
+        ],
       });
     }
 
@@ -201,12 +203,6 @@ export class ProductsService {
 
     if (searchRequest.category) {
       andFilters.push({ category: searchRequest.category as Category });
-    }
-
-    if (searchRequest.manufacturer) {
-      andFilters.push({
-        manufacturer: { contains: searchRequest.manufacturer },
-      });
     }
 
     if (searchRequest.min_price || searchRequest.max_price) {
