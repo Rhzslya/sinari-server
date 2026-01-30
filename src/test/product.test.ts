@@ -12,9 +12,12 @@ describe("POST /api/products", () => {
     await ProductTest.delete();
     await UserTest.delete();
   });
+  let token = "";
 
   it("should create a new product", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const requestBody: CreateProductRequest = {
       name: "test product",
@@ -29,7 +32,7 @@ describe("POST /api/products", () => {
     const response = await TestRequest.post<CreateProductRequest>(
       "/api/products",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -48,6 +51,8 @@ describe("POST /api/products", () => {
 
   it("should create a new product with not default enum value", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const requestBody: CreateProductRequest = {
       name: "test product",
@@ -62,7 +67,7 @@ describe("POST /api/products", () => {
     const response = await TestRequest.post<CreateProductRequest>(
       "/api/products",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -81,6 +86,8 @@ describe("POST /api/products", () => {
 
   it("should reject a new product with the same name", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ProductTest.create();
 
@@ -97,7 +104,7 @@ describe("POST /api/products", () => {
     const response = await TestRequest.post<CreateProductRequest>(
       "/api/products",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -110,6 +117,8 @@ describe("POST /api/products", () => {
 
   it("should reject create new product if user is not admin", async () => {
     await UserTest.create();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ProductTest.create();
 
@@ -126,7 +135,7 @@ describe("POST /api/products", () => {
     const response = await TestRequest.post<CreateProductRequest>(
       "/api/products",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -139,6 +148,8 @@ describe("POST /api/products", () => {
 
   it("should reject create new product if user token is invalid", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ProductTest.create();
 
@@ -168,6 +179,8 @@ describe("POST /api/products", () => {
 
   it("should reject create new product if request body is empty", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ProductTest.create();
 
@@ -184,7 +197,7 @@ describe("POST /api/products", () => {
     const response = await TestRequest.post<CreateProductRequest>(
       "/api/products",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -202,14 +215,17 @@ describe("GET /api/products/:id", () => {
     await UserTest.delete();
   });
 
+  let token = "";
   it("should get a product if user is admin", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const product = await ProductTest.create();
 
     const response = await TestRequest.get(
       `/api/products/${product.id}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -222,12 +238,14 @@ describe("GET /api/products/:id", () => {
 
   it("should get a product if user is not admin and token is valid", async () => {
     await UserTest.create();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const product = await ProductTest.create();
 
     const response = await TestRequest.get(
       `/api/products/${product.id}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -263,11 +281,14 @@ describe("GET /api/products/:id", () => {
 
   it("should get a product WITH cost_price if user is admin", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
     const product = await ProductTest.create();
 
     const response = await TestRequest.get(
       `/api/products/${product.id}`,
-      "test_token",
+      token,
     );
     const body = await response.json();
 
@@ -277,12 +298,14 @@ describe("GET /api/products/:id", () => {
 
   it("should reject get product if product id is invalid", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const product = await ProductTest.create();
 
     const response = await TestRequest.get(
       `/api/products/${product.id + 1}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -316,8 +339,12 @@ describe("PATCH /api/products/:id", () => {
     await UserTest.delete();
   });
 
+  let token = "";
+
   it("should update a product if user is admin", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const product = await ProductTest.create();
 
@@ -334,7 +361,7 @@ describe("PATCH /api/products/:id", () => {
     const response = await TestRequest.patch<UpdateProductRequest>(
       `/api/products/${product.id}`,
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -353,6 +380,8 @@ describe("PATCH /api/products/:id", () => {
 
   it("should update a product if user is admin google", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const product = await ProductTest.create();
 
@@ -369,7 +398,7 @@ describe("PATCH /api/products/:id", () => {
     const response = await TestRequest.patch<UpdateProductRequest>(
       `/api/products/${product.id}`,
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -388,6 +417,8 @@ describe("PATCH /api/products/:id", () => {
 
   it("should update a product if there are product with same name but different brand, manufacturer, and category", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ProductTest.create();
 
@@ -406,7 +437,7 @@ describe("PATCH /api/products/:id", () => {
     const response = await TestRequest.patch<UpdateProductRequest>(
       `/api/products/${product.id}`,
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -425,6 +456,9 @@ describe("PATCH /api/products/:id", () => {
 
   it("should allow update product price/stock even if name/brand is same (Self Update)", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
     const product = await ProductTest.create();
 
     const requestBody: UpdateProductRequest = {
@@ -439,7 +473,7 @@ describe("PATCH /api/products/:id", () => {
     const response = await TestRequest.patch<UpdateProductRequest>(
       `/api/products/${product.id}`,
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -453,6 +487,8 @@ describe("PATCH /api/products/:id", () => {
 
   it("should reject update product if name, brand, manufacturer, and category are same", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ProductTest.create();
 
@@ -472,7 +508,7 @@ describe("PATCH /api/products/:id", () => {
     const response = await TestRequest.patch<UpdateProductRequest>(
       `/api/products/${product.id}`,
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -485,6 +521,9 @@ describe("PATCH /api/products/:id", () => {
 
   it("should reject update product if product is not found", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
     const product = await ProductTest.create();
 
     const requestBody: UpdateProductRequest = {
@@ -499,7 +538,7 @@ describe("PATCH /api/products/:id", () => {
     const response = await TestRequest.patch(
       `/api/products/${product.id + 20}`,
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -512,12 +551,15 @@ describe("PATCH /api/products/:id", () => {
 
   it("should reject update product if user is not admin", async () => {
     await UserTest.create();
+    const user = await UserTest.get();
+    token = user.token!;
+
     const product = await ProductTest.create();
 
     const response = await TestRequest.patch(
       `/api/products/${product.id}`,
       { price: 500 },
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -535,14 +577,18 @@ describe("DELETE /api/products/:id", () => {
     await UserTest.delete();
   });
 
+  let token = "";
+
   it("should delete a product if user is admin", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const product = await ProductTest.create();
 
     const response = await TestRequest.delete(
       `/api/products/${product.id}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -555,12 +601,14 @@ describe("DELETE /api/products/:id", () => {
 
   it("should delete a product if user is admin google", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const product = await ProductTest.create();
 
     const response = await TestRequest.delete(
       `/api/products/${product.id}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -573,12 +621,14 @@ describe("DELETE /api/products/:id", () => {
 
   it("should reject delete product if product id is invalid", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const product = await ProductTest.create();
 
     const response = await TestRequest.delete(
       `/api/products/${product.id + 1}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -591,12 +641,14 @@ describe("DELETE /api/products/:id", () => {
 
   it("should reject delete product if user is not admin", async () => {
     await UserTest.create();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const product = await ProductTest.create();
 
     const response = await TestRequest.delete(
       `/api/products/${product.id}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -609,6 +661,8 @@ describe("DELETE /api/products/:id", () => {
 
   it("should reject delete product if user token is invalid", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const product = await ProductTest.create();
 
@@ -632,12 +686,16 @@ describe("GET /api/products", () => {
     await UserTest.delete();
   });
 
+  let token = "";
+
   it("should get a product if user is admin", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const product = await ProductTest.create();
 
-    const response = await TestRequest.get(`/api/products`, "test_token");
+    const response = await TestRequest.get(`/api/products`, token);
 
     const body = await response.json();
 
@@ -663,6 +721,9 @@ describe("GET /api/products", () => {
 
   it("should reject request with invalid token", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
     await ProductTest.create();
 
     const response = await TestRequest.get("/api/products", "wrong_token");
@@ -677,6 +738,8 @@ describe("GET /api/products", () => {
 
   it("should filter products by name", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ProductTest.create();
 
@@ -688,7 +751,7 @@ describe("GET /api/products", () => {
 
     const response = await TestRequest.get(
       `/api/products?${queryParams}`,
-      "test_token",
+      token,
     );
     const body = await response.json();
 
@@ -701,6 +764,8 @@ describe("GET /api/products", () => {
 
   it("should filter products by brand", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ProductTest.create();
 
@@ -712,7 +777,7 @@ describe("GET /api/products", () => {
 
     const response = await TestRequest.get(
       `/api/products?${queryParams}`,
-      "test_token",
+      token,
     );
     const body = await response.json();
 
@@ -725,6 +790,8 @@ describe("GET /api/products", () => {
 
   it("should filter products by manufacturer", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ProductTest.create();
 
@@ -736,7 +803,7 @@ describe("GET /api/products", () => {
 
     const response = await TestRequest.get(
       `/api/products?${queryParams}`,
-      "test_token",
+      token,
     );
     const body = await response.json();
 
@@ -749,6 +816,8 @@ describe("GET /api/products", () => {
 
   it("should filter products by category", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ProductTest.create();
 
@@ -760,7 +829,7 @@ describe("GET /api/products", () => {
 
     const response = await TestRequest.get(
       `/api/products?${queryParams}`,
-      "test_token",
+      token,
     );
     const body = await response.json();
 
@@ -773,6 +842,8 @@ describe("GET /api/products", () => {
 
   it("should filter products by price range", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ProductTest.create();
 
@@ -785,7 +856,7 @@ describe("GET /api/products", () => {
 
     const response = await TestRequest.get(
       `/api/products?${queryParams}`,
-      "test_token",
+      token,
     );
     const body = await response.json();
 
@@ -798,6 +869,8 @@ describe("GET /api/products", () => {
 
   it("should support pagination", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     for (let i = 0; i < 15; i++) {
       await prismaClient.product.create({
@@ -820,7 +893,7 @@ describe("GET /api/products", () => {
 
     const response = await TestRequest.get(
       `/api/products?${queryParams}`,
-      "test_token",
+      token,
     );
     const body = await response.json();
 
@@ -834,6 +907,8 @@ describe("GET /api/products", () => {
 
   it("should support multiple sort", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     for (let i = 0; i < 15; i++) {
       await prismaClient.product.create({
@@ -858,7 +933,7 @@ describe("GET /api/products", () => {
 
     const response = await TestRequest.get(
       `/api/products?${queryParams}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -874,8 +949,10 @@ describe("GET /api/products", () => {
     expect(body.data[9].name).toBe("test 9");
   });
 
-  it("should filter products by brand AND manufacturer simultaneously", async () => {
+  it("should filter products by brand AND category", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await prismaClient.product.create({
       data: {
@@ -904,9 +981,9 @@ describe("GET /api/products", () => {
     await prismaClient.product.create({
       data: {
         name: "test batre",
-        brand: "APPLE",
+        brand: "SAMSUNG",
         manufacturer: "VIZZ",
-        category: "OTHER",
+        category: "LCD",
         price: 50000,
         cost_price: 40000,
         stock: 10,
@@ -915,14 +992,14 @@ describe("GET /api/products", () => {
 
     const queryParams = new URLSearchParams({
       brand: "SAMSUNG",
-      manufacturer: "VIZZ",
+      category: "LCD",
       page: "1",
       size: "10",
     });
 
     const response = await TestRequest.get(
       `/api/products?${queryParams}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -935,11 +1012,13 @@ describe("GET /api/products", () => {
 
     expect(body.data[0].name).toBe("test batre");
     expect(body.data[0].brand).toBe("SAMSUNG");
-    expect(body.data[0].manufacturer).toBe("VIZZ");
+    expect(body.data[0].category).toBe("LCD");
   });
 
   it("should filter products price range with descending order", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await prismaClient.product.create({
       data: {
@@ -988,7 +1067,7 @@ describe("GET /api/products", () => {
 
     const response = await TestRequest.get(
       `/api/products?${queryParams}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();

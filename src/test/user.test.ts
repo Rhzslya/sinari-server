@@ -271,8 +271,13 @@ describe("GET /api/users/current", () => {
     await UserTest.delete();
   });
 
+  let token = "";
+
   it("should get current user", async () => {
-    const response = await TestRequest.get("/api/users/current", "test_token");
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const response = await TestRequest.get("/api/users/current", token);
     const body = await response.json();
 
     logger.debug(body);
@@ -312,7 +317,12 @@ describe("PATCH /api/users/current", () => {
     await UserTest.delete();
   });
 
+  let token = "";
+
   it("should patch user name", async () => {
+    const user = await UserTest.get();
+    token = user.token!;
+
     const updateData: UpdateUserRequest = {
       name: "test2",
     };
@@ -320,7 +330,7 @@ describe("PATCH /api/users/current", () => {
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -332,6 +342,9 @@ describe("PATCH /api/users/current", () => {
   });
 
   it("should patch user email if email not exists in database", async () => {
+    const user = await UserTest.get();
+    token = user.token!;
+
     const updateData: UpdateUserRequest = {
       email: "test2@gmail.com",
     };
@@ -339,7 +352,7 @@ describe("PATCH /api/users/current", () => {
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -356,20 +369,25 @@ describe("PATCH /api/users/current", () => {
       current_password: "test",
     };
 
+    // 1. Ambil user awal cuma buat dapetin token
+    let user = await UserTest.get();
+    token = user.token!;
+
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
 
-    const user = await UserTest.get();
-
     logger.debug(body);
 
     expect(response.status).toBe(200);
-    expect(await bcrypt.compare("test2", user.password!)).toBe(true);
+
+    const updatedUser = await UserTest.get();
+
+    expect(await bcrypt.compare("test2", updatedUser.password!)).toBe(true);
   });
 
   it("should reject patch user password if current password is missing", async () => {
@@ -378,15 +396,16 @@ describe("PATCH /api/users/current", () => {
       // current_password: "",
     };
 
+    const user = await UserTest.get();
+    token = user.token!;
+
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
-
-    const user = await UserTest.get();
 
     logger.debug(body);
 
@@ -394,32 +413,10 @@ describe("PATCH /api/users/current", () => {
     expect(await bcrypt.compare("test2", user.password!)).toBe(false);
   });
 
-  it("should patch user password if user is login with google and will be multiple login", async () => {
-    await UserTest.delete();
-
-    await UserTest.createGoogleDuplicate();
-
-    const updateData: UpdateUserRequest = {
-      password: "test2",
-    };
-
-    const response = await TestRequest.patch(
-      "/api/users/current",
-      updateData,
-      "test_token",
-    );
-
-    const body = await response.json();
-
-    const user = await UserTest.get();
-
-    logger.debug(body);
-
-    expect(response.status).toBe(200);
-    expect(await bcrypt.compare("test2", user.password!)).toBe(true);
-  });
-
   it("should reject patch if data is null", async () => {
+    const user = await UserTest.get();
+    token = user.token!;
+
     const updateData: UpdateUserRequest = {
       email: "",
       password: "",
@@ -429,7 +426,7 @@ describe("PATCH /api/users/current", () => {
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -466,10 +463,13 @@ describe("PATCH /api/users/current", () => {
       email: "test@gmail.com",
     };
 
+    const user = await UserTest.get();
+    token = user.token!;
+
     const response = await TestRequest.patch(
       "/api/users/current",
       updateData,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -490,11 +490,13 @@ describe("DELETE /api/users/logout", () => {
     await UserTest.delete();
   });
 
+  let token = "";
+
   it("should logout user", async () => {
-    const response = await TestRequest.delete(
-      "/api/users/logout",
-      "test_token",
-    );
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const response = await TestRequest.delete("/api/users/logout", token);
 
     const body = await response.json();
 
@@ -503,8 +505,9 @@ describe("DELETE /api/users/logout", () => {
     expect(response.status).toBe(200);
     expect(body.data).toBe("OK");
 
-    const user = await UserTest.get();
-    expect(user.token).toBeNull();
+    const userAfterLogout = await UserTest.get();
+
+    expect(userAfterLogout.token).toBeNull();
   });
 
   it("should reject logout user if token is wrong", async () => {

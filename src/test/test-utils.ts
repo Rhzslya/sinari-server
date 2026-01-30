@@ -2,6 +2,8 @@ import type { Service, User } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { web } from "../application/web";
 import bcrypt from "bcrypt";
+import { sign } from "hono/jwt";
+
 export class UserTest {
   static async delete() {
     await prismaClient.user.deleteMany({
@@ -15,7 +17,7 @@ export class UserTest {
 
   static async create() {
     const password = await bcrypt.hash("test", 10);
-    await prismaClient.user.create({
+    const user = await prismaClient.user.create({
       data: {
         email: "test@gmail.com",
         username: "test",
@@ -26,11 +28,33 @@ export class UserTest {
         verify_token: null,
       },
     });
+
+    const payload = {
+      id: user.id,
+      username: user.username,
+      role: "customer",
+      name: user.name,
+      email: user.email,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+    };
+
+    const token = await sign(
+      payload,
+      process.env.JWT_SECRET || "secret",
+      "HS256",
+    );
+
+    await prismaClient.user.update({
+      where: { id: user.id },
+      data: { token: token },
+    });
+
+    return token;
   }
 
-  static async createAdmin() {
+  static async createAdmin(): Promise<string> {
     const password = await bcrypt.hash("test", 10);
-    await prismaClient.user.create({
+    const user = await prismaClient.user.create({
       data: {
         email: "test@gmail.com",
         username: "test",
@@ -42,6 +66,28 @@ export class UserTest {
         role: "admin",
       },
     });
+
+    const payload = {
+      id: user.id,
+      username: user.username,
+      role: "customer",
+      name: user.name,
+      email: user.email,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+    };
+
+    const token = await sign(
+      payload,
+      process.env.JWT_SECRET || "secret",
+      "HS256",
+    );
+
+    await prismaClient.user.update({
+      where: { id: user.id },
+      data: { token: token },
+    });
+
+    return token;
   }
 
   static async get(): Promise<User> {
@@ -69,9 +115,9 @@ export class UserTest {
     });
   }
 
-  static async createAdminGoogle() {
+  static async createAdminGoogle(): Promise<string> {
     const password = await bcrypt.hash("test", 10);
-    await prismaClient.user.create({
+    const user = await prismaClient.user.create({
       data: {
         google_id: "123123123",
         email: "test@gmail.com",
@@ -84,6 +130,28 @@ export class UserTest {
         role: "admin",
       },
     });
+
+    const payload = {
+      id: user.id,
+      username: user.username,
+      role: "admin",
+      name: user.name,
+      email: user.email,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+    };
+
+    const token = await sign(
+      payload,
+      process.env.JWT_SECRET || "secret",
+      "HS256",
+    );
+
+    await prismaClient.user.update({
+      where: { id: user.id },
+      data: { token: token },
+    });
+
+    return token;
   }
 
   static async deleteGoogleDuplicate() {

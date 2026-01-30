@@ -17,8 +17,12 @@ describe("POST /api/services", () => {
     await ServiceTest.deleteAll();
   });
 
+  let token = "";
+
   it("should create service", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const requestBody: CreateServiceRequest = {
       brand: "test",
@@ -38,7 +42,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -58,6 +62,8 @@ describe("POST /api/services", () => {
 
   it("should create service if user is admin google", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const requestBody: CreateServiceRequest = {
       brand: "test",
@@ -77,7 +83,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -97,6 +103,8 @@ describe("POST /api/services", () => {
 
   it("should create service if service list is multiple", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const requestBody: CreateServiceRequest = {
       brand: "test",
@@ -120,7 +128,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -145,6 +153,8 @@ describe("POST /api/services", () => {
 
   it("should create service if service list is multiple and have discount", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const requestBody: CreateServiceRequest = {
       brand: "test",
@@ -169,7 +179,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -194,6 +204,8 @@ describe("POST /api/services", () => {
 
   it("should create service even if optional fields are missing", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const requestBody: CreateServiceRequest = {
       brand: "test",
@@ -206,7 +218,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -221,6 +233,8 @@ describe("POST /api/services", () => {
 
   it("should reject create service if service list is empty", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const requestBody: CreateServiceRequest = {
       brand: "test",
@@ -235,7 +249,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -275,6 +289,8 @@ describe("POST /api/services", () => {
 
   it("should reject create service if discount is invalid (negative or > 100)", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const requestBody: CreateServiceRequest = {
       brand: "test",
@@ -288,7 +304,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -300,6 +316,8 @@ describe("POST /api/services", () => {
 
   it("should reject create service if service price is negative", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const requestBody: CreateServiceRequest = {
       brand: "test",
@@ -317,7 +335,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -327,6 +345,8 @@ describe("POST /api/services", () => {
 
   it("should reject create service if required fields are empty strings", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const requestBody: CreateServiceRequest = {
       brand: "",
@@ -339,7 +359,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -349,6 +369,8 @@ describe("POST /api/services", () => {
 
   it("should reject create service if user is not admin", async () => {
     await UserTest.create();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const requestBody: CreateServiceRequest = {
       brand: "test",
@@ -368,7 +390,7 @@ describe("POST /api/services", () => {
     const response = await TestRequest.post<CreateServiceRequest>(
       "/api/services",
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -383,14 +405,17 @@ describe("GET /api/services/:id", () => {
     await UserTest.delete();
   });
 
+  let token = "";
   it("should get service by id if user is admin", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
     const response = await TestRequest.get(
       `/api/services/${service.id}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -403,12 +428,14 @@ describe("GET /api/services/:id", () => {
 
   it("should get service by id if user is admin google", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
     const response = await TestRequest.get(
       `/api/services/${service.id}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -421,12 +448,14 @@ describe("GET /api/services/:id", () => {
 
   it("should reject get service if user is not admin", async () => {
     await UserTest.create();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
     const response = await TestRequest.get(
       `/api/services/${service.id}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -439,12 +468,14 @@ describe("GET /api/services/:id", () => {
 
   it("should reject get service if service id is invalid", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
     const response = await TestRequest.get(
       `/api/services/${service.id + 1}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -496,8 +527,11 @@ describe("PATCH /api/services/:id", () => {
     await UserTest.delete();
   });
 
+  let token = "";
   it("should patch service if user is admin", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
@@ -510,7 +544,7 @@ describe("PATCH /api/services/:id", () => {
     const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id}`,
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -524,6 +558,8 @@ describe("PATCH /api/services/:id", () => {
 
   it("should patch service list and recalculate total price", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
@@ -544,7 +580,7 @@ describe("PATCH /api/services/:id", () => {
     const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id}`,
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -559,6 +595,8 @@ describe("PATCH /api/services/:id", () => {
 
   it("should patch service if user is admin google", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
@@ -571,7 +609,7 @@ describe("PATCH /api/services/:id", () => {
     const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id}`,
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -585,6 +623,8 @@ describe("PATCH /api/services/:id", () => {
 
   it("should reject patch service if user is not admin", async () => {
     await UserTest.create();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
@@ -597,7 +637,7 @@ describe("PATCH /api/services/:id", () => {
     const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id}`,
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -610,6 +650,8 @@ describe("PATCH /api/services/:id", () => {
 
   it("should reject patch service if service id is invalid", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
@@ -622,7 +664,7 @@ describe("PATCH /api/services/:id", () => {
     const response = await TestRequest.patch<UpdateServiceRequest>(
       `/api/services/${service.id + 10}`,
       requestBody,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -640,14 +682,17 @@ describe("DELETE /api/services/:id", () => {
     await UserTest.delete();
   });
 
+  let token = "";
   it("should delete service if user is admin", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
     const response = await TestRequest.delete(
       `/api/services/${service.id}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -667,12 +712,14 @@ describe("DELETE /api/services/:id", () => {
 
   it("should delete service if user is admin google", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
     const response = await TestRequest.delete(
       `/api/services/${service.id}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -692,12 +739,14 @@ describe("DELETE /api/services/:id", () => {
 
   it("should reject delete service if user is not admin", async () => {
     await UserTest.create();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
     const response = await TestRequest.delete(
       `/api/services/${service.id}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -710,12 +759,14 @@ describe("DELETE /api/services/:id", () => {
 
   it("should reject delete service if service id is invalid", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     const service = await ServiceTest.create();
 
     const response = await TestRequest.delete(
       `/api/services/${service.id + 1}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -751,12 +802,16 @@ describe("GET /api/services", () => {
     await UserTest.delete();
   });
 
+  let token = "";
+
   it("should search service if user is admin", async () => {
     await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ServiceTest.create();
 
-    const response = await TestRequest.get("/api/services", "test_token");
+    const response = await TestRequest.get("/api/services", token);
 
     const body = await response.json();
 
@@ -771,10 +826,12 @@ describe("GET /api/services", () => {
 
   it("should search service if user is admin google", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await ServiceTest.create();
 
-    const response = await TestRequest.get("/api/services", "test_token");
+    const response = await TestRequest.get("/api/services", token);
 
     const body = await response.json();
 
@@ -789,6 +846,9 @@ describe("GET /api/services", () => {
 
   it("should search service using brand", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
+
     await ServiceTest.create();
 
     const queryParams = new URLSearchParams({
@@ -799,7 +859,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -814,6 +874,9 @@ describe("GET /api/services", () => {
 
   it("should search service using model", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
+
     await ServiceTest.create();
 
     const queryParams = new URLSearchParams({
@@ -824,7 +887,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -839,6 +902,9 @@ describe("GET /api/services", () => {
 
   it("should search service using customer name", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
+
     await ServiceTest.create();
 
     const queryParams = new URLSearchParams({
@@ -849,7 +915,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -864,6 +930,9 @@ describe("GET /api/services", () => {
 
   it("should search service using phone number", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
+
     await ServiceTest.create();
 
     const queryParams = new URLSearchParams({
@@ -874,7 +943,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -889,6 +958,9 @@ describe("GET /api/services", () => {
 
   it("should search service using status", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
+
     await ServiceTest.create();
 
     const queryParams = new URLSearchParams({
@@ -899,7 +971,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -914,6 +986,9 @@ describe("GET /api/services", () => {
 
   it("should search service using page", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
+
     await ServiceTest.create();
 
     const queryParams = new URLSearchParams({
@@ -923,7 +998,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -938,6 +1013,9 @@ describe("GET /api/services", () => {
 
   it("should search service if no result", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
+
     await ServiceTest.create();
 
     const queryParams = new URLSearchParams({
@@ -948,7 +1026,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -963,6 +1041,8 @@ describe("GET /api/services", () => {
 
   it("should support multiple sort", async () => {
     await UserTest.createAdminGoogle();
+    const user = await UserTest.get();
+    token = user.token!;
 
     await prismaClient.service.create({
       data: {
@@ -1028,7 +1108,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
@@ -1041,6 +1121,9 @@ describe("GET /api/services", () => {
 
   it("should reject search service if user is not admin", async () => {
     await UserTest.create();
+    const user = await UserTest.get();
+    token = user.token!;
+
     await ServiceTest.create();
 
     const queryParams = new URLSearchParams({
@@ -1051,7 +1134,7 @@ describe("GET /api/services", () => {
 
     const response = await TestRequest.get(
       `/api/services?${queryParams}`,
-      "test_token",
+      token,
     );
 
     const body = await response.json();
