@@ -1,4 +1,4 @@
-import { describe, afterEach, beforeEach, it, expect } from "bun:test";
+import { describe, afterEach, beforeEach, it, expect, jest } from "bun:test";
 import { ProductTest, TestRequest, UserTest } from "./test-utils";
 import type {
   CreateProductRequest,
@@ -6,6 +6,7 @@ import type {
 } from "../model/product-model";
 import { logger } from "../application/logging";
 import { prismaClient } from "../application/database";
+import { CloudinaryService } from "../service/cloudinary-service";
 
 describe("POST /api/products", () => {
   afterEach(async () => {
@@ -337,6 +338,7 @@ describe("PATCH /api/products/:id", () => {
   afterEach(async () => {
     await ProductTest.delete();
     await UserTest.delete();
+    jest.restoreAllMocks();
   });
 
   let token = "";
@@ -568,6 +570,92 @@ describe("PATCH /api/products/:id", () => {
 
     expect(response.status).toBe(403);
     expect(body.errors).toBeDefined();
+  });
+
+  it("should update a product (JSON only)", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const product = await ProductTest.create();
+
+    const requestBody: UpdateProductRequest = {
+      id: product.id,
+      name: "test product",
+      brand: "SAMSUNG",
+      manufacturer: "meetoo",
+      category: "LCD",
+      price: 10000,
+      cost_price: 8000,
+      stock: 10,
+    };
+
+    const response = await TestRequest.patch<UpdateProductRequest>(
+      `/api/products/${product.id}`,
+      requestBody,
+      token,
+    );
+
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.data.brand).toBe("SAMSUNG");
+    expect(body.data.manufacturer).toBe("MEETOO");
+  });
+
+  it("should update product with image (Multipart)", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+    const product = await ProductTest.create();
+
+    const mockUpload = jest
+      .spyOn(CloudinaryService, "uploadImage")
+      .mockResolvedValue("https://mock-url.com/gambar-baru.jpg");
+
+    const formData = new FormData();
+    formData.append("name", "test product");
+    const file = new Blob(["dummy-content"], { type: "image/png" });
+    formData.append("image", file, "test.png");
+
+    const response = await TestRequest.patchMultipart(
+      `/api/products/${product.id}`,
+      formData,
+      token,
+    );
+
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.name).toBe("test product");
+    expect(body.data.image_url).toBe("https://mock-url.com/gambar-baru.jpg");
+    expect(mockUpload).toHaveBeenCalled();
+  });
+
+  it("should allow update product price/stock even if name/brand is same (Self Update)", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const product = await ProductTest.create();
+
+    const requestBody: UpdateProductRequest = {
+      id: product.id,
+      name: "test product",
+      brand: "OTHER",
+      manufacturer: "ORIGINAL",
+      category: "OTHER",
+      price: 25000,
+    };
+
+    const response = await TestRequest.patch<UpdateProductRequest>(
+      `/api/products/${product.id}`,
+      requestBody,
+      token,
+    );
+
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.data.price).toBe(25000);
   });
 });
 

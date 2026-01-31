@@ -70,7 +70,7 @@ export class UserTest {
     const payload = {
       id: user.id,
       username: user.username,
-      role: "customer",
+      role: "admin",
       name: user.name,
       email: user.email,
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
@@ -300,6 +300,23 @@ export class TestRequest {
     return web.request(url, {
       method: "DELETE",
       headers: this.makeHeaders(token),
+    });
+  }
+
+  static async patchMultipart(
+    url: string,
+    formData: FormData,
+    token?: string,
+  ): Promise<Response> {
+    const headers = new Headers();
+    if (token) {
+      headers.append("Authorization", `Bearer ${token}`);
+    }
+
+    return web.request(url, {
+      method: "PATCH",
+      headers: headers,
+      body: formData,
     });
   }
 }

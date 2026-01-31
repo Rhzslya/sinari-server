@@ -137,6 +137,8 @@ export class UserService {
       data: {
         token: jwtToken,
         token_expired_at: expiredAt,
+        password_reset_token: null,
+        password_reset_expires_at: null,
       },
     });
 

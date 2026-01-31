@@ -3,7 +3,7 @@ import type { ApplicationVariables } from "../type/hono-context";
 
 export const adminMiddleware = async (
   c: Context<{ Variables: ApplicationVariables }>,
-  next: Next
+  next: Next,
 ) => {
   const user = c.var.user;
 
@@ -12,7 +12,7 @@ export const adminMiddleware = async (
       {
         errors: "Unauthorized",
       },
-      401
+      401,
     );
   }
 
@@ -21,7 +21,7 @@ export const adminMiddleware = async (
       {
         errors: "Forbidden: Insufficient permissions",
       },
-      403
+      403,
     );
   }
 

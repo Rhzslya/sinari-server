@@ -1,4 +1,5 @@
-import type { Context, Next } from "hono"; // 1. Import 'Next'
+import type { Context, Next } from "hono";
+import { verify } from "hono/jwt";
 import { prismaClient } from "../application/database";
 import type { ApplicationVariables } from "../type/hono-context";
 
@@ -9,73 +10,33 @@ export const authMiddleware = async (
   const authHeader = c.req.header("Authorization");
 
   if (!authHeader) {
-    return c.json(
-      {
-        errors: "Unauthorized",
-      },
-      401,
-    );
+    return c.json({ errors: "Unauthorized" }, 401);
   }
 
   const token = authHeader.split(" ")[1];
 
   if (!token) {
-    return c.json(
-      {
-        errors: "Unauthorized",
-      },
-      401,
-    );
+    return c.json({ errors: "Unauthorized" }, 401);
   }
 
-  const user = await prismaClient.user.findFirst({
-    where: {
-      token: token,
-    },
-  });
+  try {
+    const payload = await verify(token, process.env.JWT_SECRET!, "HS256");
 
-  if (!user) {
-    return c.json(
-      {
-        errors: "Unauthorized",
+    const user = await prismaClient.user.findFirst({
+      where: {
+        id: payload.id as number,
+        token: token,
       },
-      401,
-    );
-  }
+    });
 
-  if (user.token_expired_at) {
-    const now = new Date().getTime();
-    const expiredTime = user.token_expired_at.getTime();
-
-    if (now > expiredTime) {
-      await prismaClient.user.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          token: null,
-          token_expired_at: null,
-        },
-      });
-
-      return c.json({ errors: "Token Expired" }, 401);
+    if (!user) {
+      return c.json({ errors: "Unauthorized - Session Expired" }, 401);
     }
 
-    const threshold = 23 * 60 * 60 * 1000;
+    c.set("user", user);
 
-    if (expiredTime - now < threshold) {
-      await prismaClient.user.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          token_expired_at: new Date(now + 24 * 60 * 60 * 1000),
-        },
-      });
-    }
+    await next();
+  } catch (e) {
+    return c.json({ errors: "Unauthorized - Invalid Token" }, 401);
   }
-
-  c.set("user", user);
-
-  await next();
 };

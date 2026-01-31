@@ -18,8 +18,10 @@ import {
   type SearchProductRequest,
   type UpdateProductRequest,
 } from "../model/product-model";
+import { isValidFile } from "../utils/cloudinary-guard";
 import { ProductValidation } from "../validation/product-validation";
 import { Validation } from "../validation/validation";
+import { CloudinaryService } from "./cloudinary-service";
 
 export class ProductsService {
   static async create(
@@ -51,6 +53,23 @@ export class ProductsService {
       );
     }
 
+    let imageUrl = "";
+
+    if (isValidFile(request.image)) {
+      const sanitizedName = createRequest.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "-")
+        .replace(/-+/g, "-");
+
+      const fileName = `${sanitizedName}-${Date.now()}`;
+
+      imageUrl = await CloudinaryService.uploadImage(
+        request.image,
+        "sinari-cell/products",
+        fileName,
+      );
+    }
+
     const product = await prismaClient.product.create({
       data: {
         name: createRequest.name,
@@ -60,6 +79,7 @@ export class ProductsService {
         cost_price: createRequest.cost_price,
         category: createRequest.category,
         stock: createRequest.stock,
+        image_url: imageUrl,
       },
     });
 
@@ -141,6 +161,18 @@ export class ProductsService {
       }
     }
 
+    let imageUrl = oldProduct.image_url;
+
+    if (isValidFile(request.image)) {
+      const fileName = `${oldProduct.id}`;
+
+      imageUrl = await CloudinaryService.uploadImage(
+        request.image,
+        "sinari-cell/products",
+        fileName,
+      );
+    }
+
     const product = await prismaClient.product.update({
       where: {
         id: request.id,
@@ -153,6 +185,7 @@ export class ProductsService {
         price: updateRequest.price,
         cost_price: updateRequest.cost_price,
         stock: updateRequest.stock,
+        image_url: imageUrl,
       },
     });
 

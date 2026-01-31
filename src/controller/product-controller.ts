@@ -14,7 +14,20 @@ export class ProductController {
     try {
       const user = c.var.user as User;
 
-      const request = (await c.req.json()) as CreateProductRequest;
+      let request: CreateProductRequest = {} as CreateProductRequest;
+      const contentType = c.req.header("Content-Type") || "";
+
+      if (contentType.includes("application/json")) {
+        request = await c.req.json();
+      } else if (contentType.includes("multipart/form-data")) {
+        const body = await c.req.parseBody();
+        request = body as unknown as CreateProductRequest;
+      } else {
+        throw new ResponseError(
+          400,
+          "Content-Type must be application/json or multipart/form-data",
+        );
+      }
 
       const response = await ProductsService.create(user, request);
 
@@ -64,11 +77,20 @@ export class ProductController {
 
       const id = Number(c.req.param("id"));
 
+      let request: UpdateProductRequest = {} as UpdateProductRequest;
+      const contentType = c.req.header("Content-Type") || "";
+
+      if (contentType.includes("application/json")) {
+        request = await c.req.json();
+      } else if (contentType.includes("multipart/form-data")) {
+        const body = await c.req.parseBody();
+
+        request = body as unknown as UpdateProductRequest;
+      }
+
       if (isNaN(id)) {
         throw new ResponseError(400, "Invalid product ID");
       }
-
-      const request = (await c.req.json()) as UpdateProductRequest;
 
       request.id = id;
 

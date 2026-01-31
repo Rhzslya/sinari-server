@@ -9,6 +9,7 @@ export type ProductResponse = {
   price: number;
   cost_price: number;
   stock: number;
+  image_url: string | null;
   created_at: Date;
   updated_at: Date;
 };
@@ -19,6 +20,7 @@ export type ProductPublicResponse = {
   brand: Brand;
   manufacturer: string;
   category: Category;
+  image_url: string | null;
   price: number;
   stock: number;
 };
@@ -31,6 +33,7 @@ export type CreateProductRequest = {
   cost_price: number;
   category?: Category;
   stock?: number;
+  image?: File;
 };
 
 export type UpdateProductRequest = {
@@ -42,6 +45,7 @@ export type UpdateProductRequest = {
   cost_price?: number;
   category?: Category;
   stock?: number;
+  image?: File;
 };
 
 export type SearchProductRequest = {
@@ -70,6 +74,7 @@ export function toProductResponse(product: Product): ProductResponse {
     stock: product.stock,
     created_at: product.created_at,
     updated_at: product.updated_at,
+    image_url: product.image_url,
   };
 }
 
@@ -84,5 +89,6 @@ export function toProductPublicResponse(
     category: product.category,
     price: product.price,
     stock: product.stock,
+    image_url: product.image_url,
   };
 }
