@@ -71,4 +71,18 @@ export class CloudinaryService {
       uploadStream.end(buffer);
     });
   }
+
+  static async deleteImage(url: string): Promise<void> {
+    try {
+      const splitUrl = url.split("/");
+
+      const filenameWithExt = splitUrl.pop();
+      const publicIdWithoutExt = filenameWithExt?.split(".")[0]; // 10
+      const publicId = `sinari-cell/products/${publicIdWithoutExt}`;
+
+      await cloudinary.uploader.destroy(publicId);
+    } catch (error) {
+      throw new ResponseError(500, "Failed to delete image");
+    }
+  }
 }

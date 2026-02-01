@@ -34,6 +34,10 @@ export class ProductValidation {
       .refine((file) => file.size <= MAX_FILE_SIZE)
       .refine((file) => ACCEPTED_IMAGE_TYPES.includes(file.type))
       .optional(),
+    delete_image: z.preprocess(
+      (val) => val === "true" || val === true,
+      z.boolean().optional(),
+    ),
   });
 
   static readonly SEARCH = z.object({

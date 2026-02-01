@@ -163,7 +163,12 @@ export class ProductsService {
 
     let imageUrl = oldProduct.image_url;
 
-    if (isValidFile(request.image)) {
+    if (request.delete_image === true) {
+      if (oldProduct.image_url) {
+        await CloudinaryService.deleteImage(oldProduct.image_url);
+      }
+      imageUrl = null;
+    } else if (isValidFile(request.image)) {
       const fileName = `${oldProduct.id}`;
 
       imageUrl = await CloudinaryService.uploadImage(

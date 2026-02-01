@@ -46,6 +46,7 @@ export type UpdateProductRequest = {
   category?: Category;
   stock?: number;
   image?: File;
+  delete_image?: boolean;
 };
 
 export type SearchProductRequest = {
