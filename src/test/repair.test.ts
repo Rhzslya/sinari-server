@@ -25,7 +25,7 @@ describe("POST /api/services", () => {
     token = user.token!;
 
     const requestBody: CreateServiceRequest = {
-      brand: "test",
+      brand: "OTHER",
       model: "test",
       customer_name: "test",
       phone_number: "08123123123",
@@ -50,7 +50,7 @@ describe("POST /api/services", () => {
     logger.debug(body);
 
     expect(response.status).toBe(200);
-    expect(body.data.brand).toBe("test");
+    expect(body.data.brand).toBe("OTHER");
     expect(body.data.model).toBe("test");
     expect(body.data.customer_name).toBe("test");
     expect(body.data.phone_number).toBe("08123123123");
@@ -66,7 +66,7 @@ describe("POST /api/services", () => {
     token = user.token!;
 
     const requestBody: CreateServiceRequest = {
-      brand: "test",
+      brand: "OTHER",
       model: "test",
       customer_name: "test",
       phone_number: "test",
@@ -91,7 +91,7 @@ describe("POST /api/services", () => {
     logger.debug(body);
 
     expect(response.status).toBe(200);
-    expect(body.data.brand).toBe("test");
+    expect(body.data.brand).toBe("OTHER");
     expect(body.data.model).toBe("test");
     expect(body.data.customer_name).toBe("test");
     expect(body.data.phone_number).toBe("test");
@@ -107,7 +107,7 @@ describe("POST /api/services", () => {
     token = user.token!;
 
     const requestBody: CreateServiceRequest = {
-      brand: "test",
+      brand: "OTHER",
       model: "test",
       customer_name: "test",
       phone_number: "test",
@@ -136,7 +136,7 @@ describe("POST /api/services", () => {
     logger.debug(body);
 
     expect(response.status).toBe(200);
-    expect(body.data.brand).toBe("test");
+    expect(body.data.brand).toBe("OTHER");
     expect(body.data.model).toBe("test");
     expect(body.data.customer_name).toBe("test");
     expect(body.data.phone_number).toBe("test");
@@ -157,7 +157,7 @@ describe("POST /api/services", () => {
     token = user.token!;
 
     const requestBody: CreateServiceRequest = {
-      brand: "test",
+      brand: "OTHER",
       model: "test",
       customer_name: "test",
       phone_number: "test",
@@ -187,7 +187,7 @@ describe("POST /api/services", () => {
     logger.debug(body);
 
     expect(response.status).toBe(200);
-    expect(body.data.brand).toBe("test");
+    expect(body.data.brand).toBe("OTHER");
     expect(body.data.model).toBe("test");
     expect(body.data.customer_name).toBe("test");
     expect(body.data.phone_number).toBe("test");
@@ -208,7 +208,7 @@ describe("POST /api/services", () => {
     token = user.token!;
 
     const requestBody: CreateServiceRequest = {
-      brand: "test",
+      brand: "OTHER",
       model: "test",
       customer_name: "Simple User",
       phone_number: "08123",
@@ -237,7 +237,7 @@ describe("POST /api/services", () => {
     token = user.token!;
 
     const requestBody: CreateServiceRequest = {
-      brand: "test",
+      brand: "OTHER",
       model: "test",
       customer_name: "test",
       phone_number: "test",
@@ -264,7 +264,7 @@ describe("POST /api/services", () => {
     await UserTest.createAdmin();
 
     const requestBody: CreateServiceRequest = {
-      brand: "test",
+      brand: "OTHER",
       model: "test",
       customer_name: "test",
       phone_number: "test",
@@ -293,7 +293,7 @@ describe("POST /api/services", () => {
     token = user.token!;
 
     const requestBody: CreateServiceRequest = {
-      brand: "test",
+      brand: "OTHER",
       model: "test",
       customer_name: "test",
       phone_number: "test",
@@ -320,7 +320,7 @@ describe("POST /api/services", () => {
     token = user.token!;
 
     const requestBody: CreateServiceRequest = {
-      brand: "test",
+      brand: "OTHER",
       model: "test",
       customer_name: "test",
       phone_number: "test",
@@ -349,7 +349,7 @@ describe("POST /api/services", () => {
     token = user.token!;
 
     const requestBody: CreateServiceRequest = {
-      brand: "",
+      brand: "OTHER",
       model: "",
       customer_name: "Valid Name",
       phone_number: "08123",
@@ -373,7 +373,7 @@ describe("POST /api/services", () => {
     token = user.token!;
 
     const requestBody: CreateServiceRequest = {
-      brand: "test",
+      brand: "OTHER",
       model: "test",
       customer_name: "test",
       phone_number: "test",
@@ -844,34 +844,6 @@ describe("GET /api/services", () => {
     expect(body.paging.size).toBe(10);
   });
 
-  it("should search service using brand", async () => {
-    await UserTest.createAdminGoogle();
-    const user = await UserTest.get();
-    token = user.token!;
-
-    await ServiceTest.create();
-
-    const queryParams = new URLSearchParams({
-      brand: "es",
-      page: "1",
-      size: "10",
-    }).toString();
-
-    const response = await TestRequest.get(
-      `/api/services?${queryParams}`,
-      token,
-    );
-
-    const body = await response.json();
-    logger.debug(body);
-
-    expect(response.status).toBe(200);
-    expect(body.data.length).toBe(1);
-    expect(body.paging.current_page).toBe(1);
-    expect(body.paging.total_page).toBe(1);
-    expect(body.paging.size).toBe(10);
-  });
-
   it("should search service using model", async () => {
     await UserTest.createAdminGoogle();
     const user = await UserTest.get();
@@ -1019,7 +991,7 @@ describe("GET /api/services", () => {
     await ServiceTest.create();
 
     const queryParams = new URLSearchParams({
-      brand: "wrong",
+      model: "wrong",
       page: "1",
       size: "10",
     }).toString();
@@ -1046,7 +1018,8 @@ describe("GET /api/services", () => {
 
     await prismaClient.service.create({
       data: {
-        brand: "test",
+        service_id: "SRV-125",
+        brand: "OTHER",
         model: "test",
         customer_name: "test",
         phone_number: "test",
@@ -1073,7 +1046,8 @@ describe("GET /api/services", () => {
 
     await prismaClient.service.create({
       data: {
-        brand: "test",
+        service_id: "SRV-123",
+        brand: "OTHER",
         model: "test",
         customer_name: "test",
         phone_number: "test",

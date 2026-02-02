@@ -1,19 +1,20 @@
 import z from "zod";
-import { ServiceStatus } from "../../generated/prisma/enums";
+import { Brand, ServiceStatus } from "../../generated/prisma/enums";
 
 const SERVICE_STATUS_VALUES = Object.values(ServiceStatus) as [
   string,
   ...string[],
 ];
+const BRAND_VALUES = Object.values(Brand) as [string, ...string[]];
 
 export class RepairValidation {
   static readonly CREATE = z.object({
-    brand: z.string().min(1).max(100),
+    brand: z.enum(Brand).default(Brand.OTHER),
     model: z.string().min(1).max(100),
     customer_name: z.string().min(1).max(100),
     phone_number: z.string().min(1).max(100),
-    description: z.string().min(1).max(100).optional(),
-    technician_note: z.string().min(1).max(100).optional(),
+    description: z.string().max(100).optional(),
+    technician_note: z.string().max(100).optional(),
     service_list: z
       .array(
         z.object({
@@ -21,20 +22,20 @@ export class RepairValidation {
           price: z.number().min(1000).positive(),
         }),
       )
-      .min(1, { message: "Service list must have at least 1 service" }),
+      .min(1),
     discount: z.number().min(0).max(100).optional(),
   });
 
   static readonly UPDATE = z.object({
     id: z.number().positive(),
-    status: z.enum(SERVICE_STATUS_VALUES).optional(),
-    technician_note: z.string().optional(),
-    discount: z.number().min(0).max(100).optional(),
-    brand: z.string().min(1).max(100).optional(),
-    model: z.string().min(1).max(100).optional(),
     customer_name: z.string().min(1).max(100).optional(),
     phone_number: z.string().min(1).max(20).optional(),
-    description: z.string().max(255).optional(),
+    model: z.string().min(1).max(100).optional(),
+    status: z.enum(SERVICE_STATUS_VALUES).optional(),
+    technician_note: z.string().max(100).optional(),
+    discount: z.number().min(0).max(100).optional(),
+    brand: z.enum(Brand).optional(),
+    description: z.string().max(100).optional(),
     service_list: z
       .array(
         z.object({
@@ -46,7 +47,8 @@ export class RepairValidation {
   });
 
   static readonly SEARCH = z.object({
-    brand: z.string().min(1).max(100).optional(),
+    servive_id: z.string().min(1).max(100).optional(),
+    brand: z.enum(BRAND_VALUES).optional(),
     model: z.string().min(1).max(100).optional(),
     customer_name: z.string().min(1).max(100).optional(),
     phone_number: z.string().min(1).max(100).optional(),

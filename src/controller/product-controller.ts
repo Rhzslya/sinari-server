@@ -111,9 +111,12 @@ export class ProductController {
         throw new ResponseError(400, "Invalid product ID");
       }
 
-      await ProductsService.remove(user, id);
+      const response = await ProductsService.remove(user, id);
 
-      return c.json({ message: "Product deleted successfully" });
+      return c.json({
+        data: response,
+        message: "Product deleted successfully",
+      });
     } catch (error) {
       throw error;
     }

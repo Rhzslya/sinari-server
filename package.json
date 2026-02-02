@@ -30,6 +30,7 @@
     "google-auth-library": "^10.5.0",
     "hono": "^4.11.7",
     "hono-rate-limiter": "^0.5.3",
+    "nanoid": "^5.1.6",
     "nodemailer": "^7.0.12",
     "uuid": "^13.0.0",
     "winston": "^3.19.0",

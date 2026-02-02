@@ -18,6 +18,7 @@ import {
   type ServiceResponse,
   type UpdateServiceRequest,
 } from "../model/repair-model";
+import { generateServiceId } from "../utils/id-generator";
 import { RepairValidation } from "../validation/repair-validation";
 import { Validation } from "../validation/validation";
 import { v4 as uuid } from "uuid";
@@ -43,8 +44,23 @@ export class ServicesDataService {
 
     const trackingToken = uuid();
 
+    let serviceId = generateServiceId();
+    let isUnique = false;
+
+    while (!isUnique) {
+      const existing = await prismaClient.service.findUnique({
+        where: { service_id: serviceId },
+      });
+      if (!existing) {
+        isUnique = true;
+      } else {
+        serviceId = generateServiceId();
+      }
+    }
+
     const service = await prismaClient.service.create({
       data: {
+        service_id: serviceId,
         brand: createRequest.brand,
         model: createRequest.model,
         customer_name: createRequest.customer_name,
@@ -127,9 +143,9 @@ export class ServicesDataService {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const updateRequest = Validation.validate(RepairValidation.UPDATE, request);
+    const oldService = await this.checkServiceExists(request.id);
 
-    const oldService = await this.checkServiceExists(updateRequest.id);
+    const updateRequest = Validation.validate(RepairValidation.UPDATE, request);
 
     let currentItems: { price: number }[] = oldService.service_list;
 
@@ -219,11 +235,7 @@ export class ServicesDataService {
     const andFilters: Prisma.ServiceWhereInput[] = [];
 
     if (searchRequest.brand) {
-      andFilters.push({
-        brand: {
-          contains: searchRequest.brand,
-        },
-      });
+      andFilters.push({ brand: searchRequest.brand as Brand });
     }
 
     if (searchRequest.model) {
@@ -236,17 +248,10 @@ export class ServicesDataService {
 
     if (searchRequest.customer_name) {
       andFilters.push({
-        customer_name: {
-          contains: searchRequest.customer_name,
-        },
-      });
-    }
-
-    if (searchRequest.phone_number) {
-      andFilters.push({
-        phone_number: {
-          contains: searchRequest.phone_number,
-        },
+        OR: [
+          { customer_name: { contains: searchRequest.customer_name } },
+          { model: { contains: searchRequest.customer_name } },
+        ],
       });
     }
 
@@ -270,9 +275,7 @@ export class ServicesDataService {
     };
 
     const services = await prismaClient.service.findMany({
-      where: {
-        AND: andFilters,
-      },
+      where: whereClause,
       take: searchRequest.size,
       skip: skip,
       include: {
@@ -296,5 +299,26 @@ export class ServicesDataService {
         total_page: Math.ceil(total / searchRequest.size),
       },
     };
+  }
+
+  static async searchByServiceId(
+    serviceId: string,
+  ): Promise<PublicServiceResponse> {
+    const normalizeServiceId = serviceId.toUpperCase().trim();
+
+    const service = await prismaClient.service.findUnique({
+      where: {
+        service_id: normalizeServiceId,
+      },
+      include: {
+        service_list: true,
+      },
+    });
+
+    if (!service) {
+      throw new ResponseError(404, "Service not found");
+    }
+
+    return toPublicServiceResponse(service);
   }
 }

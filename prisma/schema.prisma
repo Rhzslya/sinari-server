@@ -47,7 +47,8 @@ model User {
 
 model Service{
   id              Int @id @default(autoincrement())
-  brand           String @db.VarChar(100)
+  service_id      String   @unique
+  brand           Brand    @default(OTHER)
   model           String @db.VarChar(100)
   customer_name   String @db.VarChar(100)
   phone_number    String @db.VarChar(100)

@@ -189,8 +189,8 @@ export class ServiceTest {
   static async deleteAll() {
     await prismaClient.service.deleteMany({
       where: {
-        brand: {
-          contains: "test",
+        service_id: {
+          contains: "SRV",
         },
       },
     });
@@ -199,7 +199,8 @@ export class ServiceTest {
   static async create() {
     return await prismaClient.service.create({
       data: {
-        brand: "test",
+        service_id: "SRV-123",
+        brand: "OTHER",
         model: "test",
         customer_name: "test",
         phone_number: "08123123123",

@@ -1,4 +1,5 @@
 import type {
+  Brand,
   Service,
   ServiceItem,
   ServiceStatus,
@@ -6,7 +7,7 @@ import type {
 
 export type ServiceResponse = {
   id: number;
-  brand: string;
+  brand: Brand;
   model: string;
   customer_name: string;
   phone_number: string;
@@ -24,10 +25,11 @@ export type ServiceResponse = {
   created_at: Date;
   updated_at?: Date;
   tracking_token: string;
+  service_id: string;
 };
 
 export type PublicServiceResponse = {
-  brand: string;
+  brand: Brand;
   model: string;
   customer_name: string;
   status: ServiceStatus;
@@ -47,7 +49,7 @@ export type PublicServiceResponse = {
 };
 
 export type CreateServiceRequest = {
-  brand: string;
+  brand: Brand;
   model: string;
   customer_name: string;
   phone_number: string;
@@ -72,7 +74,7 @@ export type UpdateServiceRequest = {
   status?: ServiceStatus;
   technician_note?: string;
   discount?: number;
-  brand?: string;
+  brand?: Brand;
   model?: string;
   customer_name?: string;
   phone_number?: string;
@@ -81,10 +83,10 @@ export type UpdateServiceRequest = {
 };
 
 export type SearchServiceRequest = {
-  brand?: string;
+  service_id?: string;
+  brand?: Brand;
   model?: string;
   customer_name?: string;
-  phone_number?: string;
   status?: ServiceStatus;
   page: number;
   size: number;
@@ -99,10 +101,11 @@ export function toServiceResponse(
 ): ServiceResponse {
   return {
     id: service.id,
+    service_id: service.service_id,
     brand: service.brand,
     model: service.model,
     customer_name: service.customer_name,
-    phone_number: service.phone_number,
+    phone_number: maskPhoneNumber(service.phone_number),
     description: service.description,
     technician_note: service.technician_note,
     status: service.status,

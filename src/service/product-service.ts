@@ -121,12 +121,12 @@ export class ProductsService {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const oldProduct = await this.checkProductExist(request.id);
-
     const updateRequest = Validation.validate(
       ProductValidation.UPDATE,
       request,
     );
+
+    const oldProduct = await this.checkProductExist(updateRequest.id);
 
     if (
       updateRequest.name ||
@@ -163,9 +163,10 @@ export class ProductsService {
 
     let imageUrl = oldProduct.image_url;
 
-    if (request.delete_image === true) {
+    if (updateRequest.delete_image === true) {
       if (oldProduct.image_url) {
         await CloudinaryService.deleteImage(oldProduct.image_url);
+        console.log("Deleted image");
       }
       imageUrl = null;
     } else if (isValidFile(request.image)) {
@@ -176,6 +177,8 @@ export class ProductsService {
         "sinari-cell/products",
         fileName,
       );
+
+      console.log("Uploaded image");
     }
 
     const product = await prismaClient.product.update({

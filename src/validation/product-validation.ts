@@ -22,6 +22,7 @@ export class ProductValidation {
   });
 
   static readonly UPDATE = z.object({
+    id: z.number().positive(),
     name: z.string().min(1).max(100).optional(),
     brand: z.enum(Brand).optional(),
     manufacturer: z.string().min(1).max(100).optional(),

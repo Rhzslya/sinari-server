@@ -5,7 +5,7 @@ import type {
   UpdateServiceRequest,
 } from "../model/repair-model";
 import { ServicesDataService } from "../service/repair-service";
-import type { ServiceStatus, User } from "../../generated/prisma/client";
+import type { Brand, ServiceStatus, User } from "../../generated/prisma/client";
 import { ResponseError } from "../error/response-error";
 
 export class ServiceController {
@@ -94,10 +94,10 @@ export class ServiceController {
       const rawStatus = c.req.query("status");
 
       const request: SearchServiceRequest = {
-        brand: c.req.query("brand"),
+        service_id: c.req.query("service_id"),
+        brand: c.req.query("brand") as Brand,
         model: c.req.query("model"),
         customer_name: c.req.query("customer_name"),
-        phone_number: c.req.query("phone_number"),
         status: rawStatus
           ? (rawStatus.toUpperCase() as ServiceStatus)
           : undefined,
@@ -119,6 +119,18 @@ export class ServiceController {
       };
 
       const response = await ServicesDataService.search(user, request);
+
+      return c.json(response);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async searchByServiceId(c: Context) {
+    try {
+      const serviceId = c.req.param("serviceId");
+
+      const response = await ServicesDataService.searchByServiceId(serviceId);
 
       return c.json(response);
     } catch (error) {
