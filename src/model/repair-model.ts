@@ -105,7 +105,7 @@ export function toServiceResponse(
     brand: service.brand,
     model: service.model,
     customer_name: service.customer_name,
-    phone_number: maskPhoneNumber(service.phone_number),
+    phone_number: service.phone_number,
     description: service.description,
     technician_note: service.technician_note,
     status: service.status,

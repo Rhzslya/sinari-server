@@ -18,6 +18,7 @@ import {
   type ServiceResponse,
   type UpdateServiceRequest,
 } from "../model/repair-model";
+import { formatPhoneNumber } from "../utils/format-phone-number";
 import { generateServiceId } from "../utils/id-generator";
 import { RepairValidation } from "../validation/repair-validation";
 import { Validation } from "../validation/validation";
@@ -64,7 +65,7 @@ export class ServicesDataService {
         brand: createRequest.brand,
         model: createRequest.model,
         customer_name: createRequest.customer_name,
-        phone_number: createRequest.phone_number,
+        phone_number: formatPhoneNumber(createRequest.phone_number),
         description: createRequest.description,
         technician_note: createRequest.technician_note,
         status: ServiceStatus.PENDING,
@@ -138,14 +139,16 @@ export class ServicesDataService {
   static async update(
     user: User,
     request: UpdateServiceRequest,
-  ): Promise<ServiceResponse> {
+  ): Promise<{
+    data: ServiceResponse;
+    meta: { wa_status: string; message?: string };
+  }> {
     if (user.role !== "admin") {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
-
-    const oldService = await this.checkServiceExists(request.id);
-
     const updateRequest = Validation.validate(RepairValidation.UPDATE, request);
+
+    const oldService = await this.checkServiceExists(updateRequest.id);
 
     let currentItems: { price: number }[] = oldService.service_list;
 
@@ -168,7 +171,9 @@ export class ServicesDataService {
       brand: updateRequest.brand,
       model: updateRequest.model,
       customer_name: updateRequest.customer_name,
-      phone_number: updateRequest.phone_number,
+      phone_number: updateRequest.phone_number
+        ? formatPhoneNumber(updateRequest.phone_number)
+        : undefined,
       description: updateRequest.description,
       technician_note: updateRequest.technician_note,
       status: updateRequest.status as ServiceStatus,
@@ -193,23 +198,49 @@ export class ServicesDataService {
       },
     });
 
+    let whatsappMeta: {
+      wa_status: "skipped" | "sent" | "failed";
+      message?: string;
+    } = {
+      wa_status: "skipped",
+      message: "",
+    };
     if (updateRequest.status && updateRequest.status !== oldService.status) {
       const trackingUrl = `https://sinari.com/services/track?token=${service.tracking_token}`;
-      const message = `Halo ${service.customer_name} Your service has been updated. Please track it here: ${trackingUrl}`;
+      const message = `Halo ${service.customer_name}...\nLink: ${trackingUrl}`;
 
-      // await WhatsappService.sendMessage(service.phone_number, message);
+      // const whatsappResult = await WhatsappService.sendMessage(
+      //   service.phone_number,
+      //   message,
+      // );
+
+      // if (whatsappResult.success) {
+      //   whatsappMeta = {
+      //     wa_status: "sent",
+      //     message: "Notifikasi WA berhasil terkirim",
+      //   };
+      // } else {
+      //   whatsappMeta = {
+      //     wa_status: "failed",
+      //     message: whatsappResult.error || "Unknown error",
+      //   };
+      // }
+
       console.log("SENDING WA TO", service.phone_number, message);
     }
 
-    return toServiceResponse(service);
+    return {
+      data: toServiceResponse(service),
+      meta: whatsappMeta,
+    };
   }
 
-  static async remove(user: User, id: number): Promise<ServiceResponse> {
+  static async remove(user: User, id: number): Promise<boolean> {
     if (user.role !== "admin") {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const service = await this.checkServiceExists(id);
+    await this.checkServiceExists(id);
 
     await prismaClient.service.delete({
       where: {
@@ -217,7 +248,7 @@ export class ServicesDataService {
       },
     });
 
-    return toServiceResponse(service);
+    return true;
   }
 
   static async search(

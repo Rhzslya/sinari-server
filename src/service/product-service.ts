@@ -200,12 +200,16 @@ export class ProductsService {
     return toProductResponse(product);
   }
 
-  static async remove(user: User, id: number): Promise<ProductResponse> {
+  static async remove(user: User, id: number): Promise<boolean> {
     if (user.role !== "admin") {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
     const product = await this.checkProductExist(id);
+
+    if (product.image_url) {
+      await CloudinaryService.deleteImage(product.image_url);
+    }
 
     await prismaClient.product.delete({
       where: {
@@ -213,7 +217,7 @@ export class ProductsService {
       },
     });
 
-    return toProductResponse(product);
+    return true;
   }
 
   static async search(
