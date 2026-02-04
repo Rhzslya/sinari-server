@@ -41,7 +41,15 @@ export class ServicesDataService {
     );
 
     const discountAmount = (subTotal * (createRequest.discount || 0)) / 100;
-    const totalPrice = subTotal - discountAmount;
+    const downPayment = createRequest.down_payment || 0;
+    const totalPrice = subTotal - discountAmount - downPayment;
+
+    if (totalPrice < 0) {
+      throw new ResponseError(
+        400,
+        "Down Payment cannot exceed the total price",
+      );
+    }
 
     const trackingToken = uuid();
 
@@ -73,6 +81,7 @@ export class ServicesDataService {
           create: createRequest.service_list,
         },
         discount: createRequest.discount || 0,
+        down_payment: downPayment,
         total_price: totalPrice,
         tracking_token: trackingToken,
       },
@@ -81,7 +90,7 @@ export class ServicesDataService {
       },
     });
 
-    const trackingUrl = `https://sinari.com/services/track?token=${service.tracking_token}`;
+    const trackingUrl = `http://localhost:5173/services/track/${service.tracking_token}`;
     const message = `Halo ${service.customer_name} Your service has been created. Please track it here: ${trackingUrl}`;
 
     // await WhatsappService.sendMessage(service.phone_number, message);
@@ -119,23 +128,6 @@ export class ServicesDataService {
     return toServiceResponse(service);
   }
 
-  static async getByToken(token: string): Promise<PublicServiceResponse> {
-    const service = await prismaClient.service.findUnique({
-      where: {
-        tracking_token: token,
-      },
-      include: {
-        service_list: true,
-      },
-    });
-
-    if (!service) {
-      throw new ResponseError(404, "Service not found");
-    }
-
-    return toPublicServiceResponse(service);
-  }
-
   static async update(
     user: User,
     request: UpdateServiceRequest,
@@ -162,10 +154,19 @@ export class ServicesDataService {
     );
 
     const currentDiscount = updateRequest.discount ?? oldService.discount;
+    const currentDownPayment =
+      updateRequest.down_payment ?? oldService.down_payment;
 
     const discountAmount = (subTotal * currentDiscount) / 100;
 
-    const totalPrice = subTotal - discountAmount;
+    const totalPrice = subTotal - discountAmount - currentDownPayment;
+
+    if (totalPrice < 0) {
+      throw new ResponseError(
+        400,
+        "Calculated total price cannot be negative. Check Down Payment amount.",
+      );
+    }
 
     const updateData: Prisma.ServiceUpdateInput = {
       brand: updateRequest.brand,
@@ -178,6 +179,7 @@ export class ServicesDataService {
       technician_note: updateRequest.technician_note,
       status: updateRequest.status as ServiceStatus,
       discount: currentDiscount,
+      down_payment: currentDownPayment,
       total_price: totalPrice,
     };
 
@@ -332,14 +334,10 @@ export class ServicesDataService {
     };
   }
 
-  static async searchByServiceId(
-    serviceId: string,
-  ): Promise<PublicServiceResponse> {
-    const normalizeServiceId = serviceId.toUpperCase().trim();
-
-    const service = await prismaClient.service.findUnique({
+  static async trackPublic(identifier: string): Promise<PublicServiceResponse> {
+    const service = await prismaClient.service.findFirst({
       where: {
-        service_id: normalizeServiceId,
+        OR: [{ tracking_token: identifier }, { service_id: identifier }],
       },
       include: {
         service_list: true,
@@ -347,7 +345,10 @@ export class ServicesDataService {
     });
 
     if (!service) {
-      throw new ResponseError(404, "Service not found");
+      throw new ResponseError(
+        404,
+        "Service not found. Please check your Token or Service ID.",
+      );
     }
 
     return toPublicServiceResponse(service);

@@ -6,7 +6,6 @@ import type {
   User,
 } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
-import { logger } from "../application/logging";
 import { ResponseError } from "../error/response-error";
 import type { Pageable } from "../model/page-model";
 import {
@@ -166,7 +165,6 @@ export class ProductsService {
     if (updateRequest.delete_image === true) {
       if (oldProduct.image_url) {
         await CloudinaryService.deleteImage(oldProduct.image_url);
-        console.log("Deleted image");
       }
       imageUrl = null;
     } else if (isValidFile(request.image)) {
@@ -177,8 +175,6 @@ export class ProductsService {
         "sinari-cell/products",
         fileName,
       );
-
-      console.log("Uploaded image");
     }
 
     const product = await prismaClient.product.update({

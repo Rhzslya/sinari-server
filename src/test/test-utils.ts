@@ -249,6 +249,28 @@ export class ProductTest {
   }
 }
 
+export class TechnicianTest {
+  static async delete() {
+    await prismaClient.technician.deleteMany({
+      where: {
+        name: {
+          contains: "test",
+        },
+      },
+    });
+  }
+
+  static async create() {
+    return await prismaClient.technician.create({
+      data: {
+        name: "test",
+        signature_url: "test.jpg",
+        is_active: true,
+      },
+    });
+  }
+}
+
 export class TestRequest {
   private static makeHeaders(
     token?: string,

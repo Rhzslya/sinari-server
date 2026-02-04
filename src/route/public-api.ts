@@ -22,7 +22,7 @@ publicRouter.patch("/api/auth/reset-password", (c) =>
 
 // Repair Public Routes
 publicRouter.get(
-  "/api/public/services/track/:token",
+  "/api/public/services/track/:identifier",
   ServiceController.getPublic,
 );
 

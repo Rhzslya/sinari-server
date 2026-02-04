@@ -12,7 +12,7 @@ export class RepairValidation {
     brand: z.enum(Brand).default(Brand.OTHER),
     model: z.string().min(1).max(100),
     customer_name: z.string().min(1).max(100),
-    phone_number: z.string().min(1).max(100),
+    phone_number: z.string().min(1).max(20),
     description: z.string().max(100).optional(),
     technician_note: z.string().max(100).optional(),
     service_list: z
@@ -23,6 +23,7 @@ export class RepairValidation {
         }),
       )
       .min(1),
+    down_payment: z.number().min(0).positive().optional(),
     discount: z.number().min(0).max(100).optional(),
   });
 
@@ -34,6 +35,7 @@ export class RepairValidation {
     status: z.enum(SERVICE_STATUS_VALUES).optional(),
     technician_note: z.string().max(100).optional(),
     discount: z.number().min(0).max(100).optional(),
+    down_payment: z.number().min(0).optional(),
     brand: z.enum(Brand).optional(),
     description: z.string().max(100).optional(),
     service_list: z

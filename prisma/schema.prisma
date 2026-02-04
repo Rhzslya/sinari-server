@@ -45,6 +45,20 @@ model User {
   @@map("users")
 }
 
+model Technician {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(100)
+  signature_url String?  @db.Text 
+  is_active     Boolean  @default(true) 
+
+  services      Service[] 
+
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@map("technicians")
+}
+
 model Service{
   id              Int @id @default(autoincrement())
   service_id      String   @unique
@@ -57,8 +71,9 @@ model Service{
   description     String? @db.Text
   technician_note String? @db.Text
 
-  discount        Int @default(0) // % discount
-  total_price     Int @default(0)   // calculate total price
+  discount        Int @default(0) 
+  down_payment    Int @default(0)
+  total_price     Int @default(0)  
 
   service_list    ServiceItem[] 
 
@@ -66,6 +81,9 @@ model Service{
 
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
+
+  technician_id   Int?
+  technician      Technician? @relation(fields: [technician_id], references: [id])
 
   @@map("services")
 }
@@ -75,7 +93,7 @@ model ServiceItem{
   name          String @db.VarChar(100)
   price         Int
 
-  service_id    Int // foreign key
+  service_id    Int 
 
   service       Service @relation(fields: [service_id], references: [id], onDelete: Cascade)
 

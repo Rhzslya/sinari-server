@@ -42,8 +42,9 @@ export class ServiceController {
   }
 
   static async getPublic(c: Context) {
-    const token = c.req.param("token");
-    const response = await ServicesDataService.getByToken(token);
+    const identifier = c.req.param("identifier");
+
+    const response = await ServicesDataService.trackPublic(identifier);
     return c.json({ data: response });
   }
 
@@ -119,18 +120,6 @@ export class ServiceController {
       };
 
       const response = await ServicesDataService.search(user, request);
-
-      return c.json(response);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  static async searchByServiceId(c: Context) {
-    try {
-      const serviceId = c.req.param("serviceId");
-
-      const response = await ServicesDataService.searchByServiceId(serviceId);
 
       return c.json(response);
     } catch (error) {
