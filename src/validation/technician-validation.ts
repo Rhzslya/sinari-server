@@ -1,12 +1,15 @@
 import z from "zod";
-import { ACCEPTED_IMAGE_TYPES, MAX_FILE_SIZE } from "../type/cloudinary-type";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  MAX_SIGNATURE_SIZE,
+} from "../type/cloudinary-type";
 
 export class TechnicianValidation {
   static readonly CREATE = z.object({
     name: z.string().min(1).max(100),
     signature: z
       .instanceof(File)
-      .refine((file) => file.size <= MAX_FILE_SIZE)
+      .refine((file) => file.size <= MAX_SIGNATURE_SIZE)
       .refine((file) => ACCEPTED_IMAGE_TYPES.includes(file.type))
       .optional(),
     delete_image: z.preprocess(
@@ -24,7 +27,7 @@ export class TechnicianValidation {
     name: z.string().min(1).max(100).optional(),
     signature: z
       .instanceof(File)
-      .refine((file) => file.size <= MAX_FILE_SIZE)
+      .refine((file) => file.size <= MAX_SIGNATURE_SIZE)
       .refine((file) => ACCEPTED_IMAGE_TYPES.includes(file.type))
       .optional(),
     delete_image: z.preprocess(

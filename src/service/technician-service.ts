@@ -1,10 +1,16 @@
-import type { Prisma, User } from "../../generated/prisma/client";
+import {
+  UserRole,
+  type Prisma,
+  type User,
+} from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { ResponseError } from "../error/response-error";
 import type { Pageable } from "../model/page-model";
 import {
+  toListTechnicianResponse,
   toTechnicianResponse,
   type CreateTechnicianRequest,
+  type ListTechnicianResponse,
   type SearchTechnicianRequest,
   type TechnicianResponse,
   type UpdateTechnicianRequest,
@@ -19,7 +25,7 @@ export class TechnicianService {
     user: User,
     request: CreateTechnicianRequest,
   ): Promise<TechnicianResponse> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
@@ -38,7 +44,7 @@ export class TechnicianService {
 
       const fileName = `${sanitizedName}-${Date.now()}`;
 
-      imageUrl = await CloudinaryService.uploadImage(
+      imageUrl = await CloudinaryService.uploadImageSignature(
         request.signature,
         "sinari-cell/technicians",
         fileName,
@@ -71,7 +77,7 @@ export class TechnicianService {
   }
 
   static async get(user: User, id: number): Promise<TechnicianResponse | null> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
@@ -80,11 +86,29 @@ export class TechnicianService {
     return toTechnicianResponse(technician);
   }
 
+  static async listActive(user: User): Promise<ListTechnicianResponse[]> {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+    const technicians = await prismaClient.technician.findMany({
+      where: { is_active: true },
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    return technicians.map((tech) => toListTechnicianResponse(tech));
+  }
+
   static async update(
     user: User,
     request: UpdateTechnicianRequest,
   ): Promise<TechnicianResponse> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
@@ -94,23 +118,6 @@ export class TechnicianService {
     );
 
     const oldTechnician = await this.checkTechnicianExist(updateRequest.id);
-
-    if (updateRequest.name || updateRequest.is_active) {
-      const nameCheck = updateRequest.name ?? oldTechnician.name;
-
-      const countExistingTechnician = await prismaClient.technician.count({
-        where: {
-          name: nameCheck,
-          id: {
-            not: request.id,
-          },
-        },
-      });
-
-      if (countExistingTechnician > 0) {
-        throw new ResponseError(400, "Technician already exists same Name");
-      }
-    }
 
     let imageUrl = oldTechnician.signature_url;
 
@@ -122,14 +129,18 @@ export class TechnicianService {
     } else if (isValidFile(request.signature)) {
       const fileName = `${oldTechnician.id}`;
 
-      imageUrl = await CloudinaryService.uploadImage(
+      if (oldTechnician.signature_url) {
+        await CloudinaryService.deleteImage(oldTechnician.signature_url);
+      }
+
+      imageUrl = await CloudinaryService.uploadImageSignature(
         request.signature,
         "sinari-cell/technicians",
         fileName,
       );
     }
 
-    const product = await prismaClient.technician.update({
+    const technician = await prismaClient.technician.update({
       where: {
         id: request.id,
       },
@@ -140,11 +151,11 @@ export class TechnicianService {
       },
     });
 
-    return toTechnicianResponse(product);
+    return toTechnicianResponse(technician);
   }
 
   static async remove(user: User, id: number): Promise<boolean> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
@@ -167,7 +178,7 @@ export class TechnicianService {
     user: User,
     request: SearchTechnicianRequest,
   ): Promise<Pageable<TechnicianResponse>> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
@@ -186,7 +197,7 @@ export class TechnicianService {
       });
     }
 
-    if (searchRequest.is_active) {
+    if (searchRequest.is_active !== undefined) {
       andFilters.push({
         is_active: searchRequest.is_active,
       });

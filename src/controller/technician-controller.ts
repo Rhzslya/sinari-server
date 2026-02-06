@@ -108,12 +108,22 @@ export class TechnicianController {
     try {
       const user = c.var.user as User;
 
+      const isActiveQuery = c.req.query("is_active");
+
+      let isActiveBoolean: boolean | undefined = undefined;
+
+      if (isActiveQuery === "true") {
+        isActiveBoolean = true;
+      } else if (isActiveQuery === "false") {
+        isActiveBoolean = false;
+      }
+
       const request: SearchTechnicianRequest = {
         name: c.req.query("name"),
         page: c.req.query("page") ? Number(c.req.query("page")) : 1,
         size: c.req.query("size") ? Number(c.req.query("size")) : 10,
 
-        is_active: c.req.query("is_active") === "true",
+        is_active: isActiveBoolean,
 
         sort_by: c.req.query("sort_by") as "created_at" | "is_active",
         sort_order: c.req.query("sort_order") as "asc" | "desc",
@@ -122,6 +132,20 @@ export class TechnicianController {
       const response = await TechnicianService.search(user, request);
 
       return c.json(response);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async listActive(c: Context) {
+    try {
+      const user = c.var.user as User;
+
+      const result = await TechnicianService.listActive(user);
+
+      return c.json({
+        data: result,
+      });
     } catch (error) {
       throw error;
     }

@@ -7,6 +7,11 @@ export type TechnicianResponse = {
   updated_at: Date;
 };
 
+export type ListTechnicianResponse = {
+  id: number;
+  name: string;
+};
+
 export type CreateTechnicianRequest = {
   name: string;
   signature?: File;
@@ -40,5 +45,14 @@ export function toTechnicianResponse(
     is_active: technician.is_active,
     created_at: technician.created_at,
     updated_at: technician.updated_at,
+  };
+}
+
+export function toListTechnicianResponse(
+  technician: ListTechnicianResponse,
+): ListTechnicianResponse {
+  return {
+    id: technician.id,
+    name: technician.name,
   };
 }
