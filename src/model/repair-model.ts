@@ -3,6 +3,7 @@ import type {
   Service,
   ServiceItem,
   ServiceStatus,
+  Technician,
 } from "../../generated/prisma/client";
 
 export type ServiceResponse = {
@@ -27,6 +28,12 @@ export type ServiceResponse = {
   updated_at?: Date;
   tracking_token: string;
   service_id: string;
+  technician: {
+    id: number;
+    name: string;
+    is_active: boolean;
+    signature_url: string | null;
+  };
 };
 
 export type PublicServiceResponse = {
@@ -49,6 +56,10 @@ export type PublicServiceResponse = {
   total_price: number;
   created_at: Date;
   updated_at?: Date;
+  technician: {
+    name: string;
+    signature_url: string | null;
+  };
 };
 
 export type CreateServiceRequest = {
@@ -61,6 +72,7 @@ export type CreateServiceRequest = {
   service_list: CreateServiceItemRequest[];
   discount?: number;
   down_payment?: number;
+  technician_id: number;
 };
 
 export type CreateServiceItemRequest = {
@@ -85,6 +97,7 @@ export type UpdateServiceRequest = {
   phone_number?: string;
   description?: string;
   service_list?: UpdateServiceItemRequest[];
+  technician_id?: number;
 };
 
 export type SearchServiceRequest = {
@@ -102,7 +115,7 @@ export type SearchServiceRequest = {
 };
 
 export function toServiceResponse(
-  service: Service & { service_list: ServiceItem[] },
+  service: Service & { service_list: ServiceItem[]; technician: Technician },
 ): ServiceResponse {
   return {
     id: service.id,
@@ -128,11 +141,17 @@ export function toServiceResponse(
     created_at: service.created_at,
     updated_at: service.updated_at,
     tracking_token: service.tracking_token,
+    technician: {
+      id: service.technician.id,
+      name: service.technician.name,
+      is_active: service.technician.is_active,
+      signature_url: service.technician.signature_url,
+    },
   };
 }
 
 export function toPublicServiceResponse(
-  service: Service & { service_list: ServiceItem[] },
+  service: Service & { service_list: ServiceItem[]; technician: Technician },
 ): PublicServiceResponse {
   return {
     service_id: service.service_id,
@@ -156,6 +175,10 @@ export function toPublicServiceResponse(
     total_price: service.total_price,
     created_at: service.created_at,
     updated_at: service.updated_at,
+    technician: {
+      name: service.technician.name,
+      signature_url: service.technician.signature_url,
+    },
   };
 }
 

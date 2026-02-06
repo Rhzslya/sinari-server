@@ -1,9 +1,11 @@
 import {
   Brand,
   ServiceStatus,
+  UserRole,
   type Prisma,
   type Service,
   type ServiceItem,
+  type Technician,
   type User,
 } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
@@ -29,11 +31,27 @@ export class ServicesDataService {
     user: User,
     request: CreateServiceRequest,
   ): Promise<ServiceResponse> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
     const createRequest = Validation.validate(RepairValidation.CREATE, request);
+
+    if (createRequest.technician_id) {
+      const technician = await prismaClient.technician.findUnique({
+        where: {
+          id: createRequest.technician_id,
+        },
+      });
+
+      if (!technician) {
+        throw new ResponseError(400, "Invalid technician ID");
+      }
+
+      if (!technician.is_active) {
+        throw new ResponseError(400, "Cannot assign to inactive technician");
+      }
+    }
 
     const subTotal = createRequest.service_list.reduce(
       (total, item) => total + item.price,
@@ -84,9 +102,15 @@ export class ServicesDataService {
         down_payment: downPayment,
         total_price: totalPrice,
         tracking_token: trackingToken,
+        technician: {
+          connect: {
+            id: createRequest.technician_id,
+          },
+        },
       },
       include: {
         service_list: true,
+        technician: true,
       },
     });
 
@@ -101,13 +125,16 @@ export class ServicesDataService {
 
   static async checkServiceExists(
     id: number,
-  ): Promise<Service & { service_list: ServiceItem[] }> {
+  ): Promise<
+    Service & { service_list: ServiceItem[]; technician: Technician }
+  > {
     const service = await prismaClient.service.findUnique({
       where: {
         id: id,
       },
       include: {
         service_list: true,
+        technician: true,
       },
     });
 
@@ -119,7 +146,7 @@ export class ServicesDataService {
   }
 
   static async get(user: User, id: number): Promise<ServiceResponse> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
@@ -135,12 +162,28 @@ export class ServicesDataService {
     data: ServiceResponse;
     meta: { wa_status: string; message?: string };
   }> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
     const updateRequest = Validation.validate(RepairValidation.UPDATE, request);
 
     const oldService = await this.checkServiceExists(updateRequest.id);
+
+    if (updateRequest.technician_id) {
+      const technician = await prismaClient.technician.findUnique({
+        where: {
+          id: updateRequest.technician_id,
+        },
+      });
+
+      if (!technician) {
+        throw new ResponseError(400, "Invalid technician ID");
+      }
+
+      if (!technician.is_active) {
+        throw new ResponseError(400, "Cannot assign to inactive technician");
+      }
+    }
 
     let currentItems: { price: number }[] = oldService.service_list;
 
@@ -183,6 +226,14 @@ export class ServicesDataService {
       total_price: totalPrice,
     };
 
+    if (updateRequest.technician_id) {
+      updateData.technician = {
+        connect: {
+          id: updateRequest.technician_id,
+        },
+      };
+    }
+
     if (updateRequest.service_list) {
       updateData.service_list = {
         deleteMany: {},
@@ -197,6 +248,7 @@ export class ServicesDataService {
       data: updateData,
       include: {
         service_list: true,
+        technician: true,
       },
     });
 
@@ -238,7 +290,7 @@ export class ServicesDataService {
   }
 
   static async remove(user: User, id: number): Promise<boolean> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
@@ -257,7 +309,7 @@ export class ServicesDataService {
     user: User,
     request: SearchServiceRequest,
   ): Promise<Pageable<ServiceResponse>> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
@@ -313,6 +365,7 @@ export class ServicesDataService {
       skip: skip,
       include: {
         service_list: true,
+        technician: true,
       },
       orderBy: {
         [searchRequest.sort_by || "created_at"]:
@@ -341,6 +394,7 @@ export class ServicesDataService {
       },
       include: {
         service_list: true,
+        technician: true,
       },
     });
 

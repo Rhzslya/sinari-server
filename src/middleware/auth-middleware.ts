@@ -2,6 +2,9 @@ import type { Context, Next } from "hono";
 import { verify } from "hono/jwt";
 import { prismaClient } from "../application/database";
 import type { ApplicationVariables } from "../type/hono-context";
+import { Redis } from "@upstash/redis";
+
+const redis = Redis.fromEnv();
 
 export const authMiddleware = async (
   c: Context<{ Variables: ApplicationVariables }>,
@@ -34,6 +37,12 @@ export const authMiddleware = async (
     }
 
     c.set("user", user);
+
+    try {
+      await redis.set(`online_users:${user.id}`, "true", { ex: 300 });
+    } catch (redisError) {
+      console.error("Failed to update session", redisError);
+    }
 
     await next();
   } catch (e) {

@@ -25,6 +25,7 @@ export class RepairValidation {
       .min(1),
     down_payment: z.number().min(0).positive().optional(),
     discount: z.number().min(0).max(100).optional(),
+    technician_id: z.number().positive(),
   });
 
   static readonly UPDATE = z.object({
@@ -46,6 +47,7 @@ export class RepairValidation {
         }),
       )
       .optional(),
+    technician_id: z.number().positive().optional(),
   });
 
   static readonly SEARCH = z.object({

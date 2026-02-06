@@ -197,6 +197,7 @@ export class ServiceTest {
   }
 
   static async create() {
+    const technician = await TechnicianTest.create();
     return await prismaClient.service.create({
       data: {
         service_id: "SRV-123",
@@ -214,6 +215,11 @@ export class ServiceTest {
               price: 1000,
             },
           ],
+        },
+        technician: {
+          connect: {
+            id: technician.id,
+          },
         },
         discount: 0,
         total_price: 1000,

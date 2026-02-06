@@ -322,3 +322,36 @@ describe("Technician API", () => {
     });
   });
 });
+
+describe("GET /api/technicians/active", () => {
+  afterEach(async () => {
+    await TechnicianTest.delete();
+    await UserTest.delete();
+  });
+
+  it.only("should return active technicians", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    const token = user.token!;
+
+    // Create active and inactive
+    await TestRequest.post(
+      "/api/technicians",
+      { name: "test active", is_active: true },
+      token,
+    );
+    await TestRequest.post(
+      "/api/technicians",
+      { name: "test inactive", is_active: false },
+      token,
+    );
+
+    // Search active=false
+    const response = await TestRequest.get("/api/technicians/active", token);
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+  });
+});

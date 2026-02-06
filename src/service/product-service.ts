@@ -1,9 +1,10 @@
-import type {
-  Brand,
-  Category,
-  Prisma,
-  Product,
-  User,
+import {
+  UserRole,
+  type Brand,
+  type Category,
+  type Prisma,
+  type Product,
+  type User,
 } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { ResponseError } from "../error/response-error";
@@ -27,7 +28,7 @@ export class ProductsService {
     user: User,
     request: CreateProductRequest,
   ): Promise<ProductResponse> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
@@ -62,7 +63,7 @@ export class ProductsService {
 
       const fileName = `${sanitizedName}-${Date.now()}`;
 
-      imageUrl = await CloudinaryService.uploadImage(
+      imageUrl = await CloudinaryService.uploadImageProduct(
         request.image,
         "sinari-cell/products",
         fileName,
@@ -105,7 +106,7 @@ export class ProductsService {
   ): Promise<ProductResponse | ProductPublicResponse> {
     const product = await this.checkProductExist(id);
 
-    if (user && user.role === "admin") {
+    if ((user && user.role === UserRole.ADMIN) || UserRole.OWNER) {
       return toProductResponse(product);
     }
 
@@ -116,7 +117,7 @@ export class ProductsService {
     user: User,
     request: UpdateProductRequest,
   ): Promise<ProductResponse> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
@@ -170,7 +171,11 @@ export class ProductsService {
     } else if (isValidFile(request.image)) {
       const fileName = `${oldProduct.id}`;
 
-      imageUrl = await CloudinaryService.uploadImage(
+      if (oldProduct.image_url) {
+        await CloudinaryService.deleteImage(oldProduct.image_url);
+      }
+
+      imageUrl = await CloudinaryService.uploadImageProduct(
         request.image,
         "sinari-cell/products",
         fileName,
@@ -197,7 +202,7 @@ export class ProductsService {
   }
 
   static async remove(user: User, id: number): Promise<boolean> {
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
@@ -279,10 +284,10 @@ export class ProductsService {
       where: whereClause,
     });
 
-    const isAdmin = user && user.role === "admin";
+    const isNotCustomer = user && user.role !== UserRole.CUSTOMER;
 
     const data = products.map((product) => {
-      if (isAdmin) {
+      if (isNotCustomer) {
         return toProductResponse(product);
       } else {
         return toProductPublicResponse(product);
