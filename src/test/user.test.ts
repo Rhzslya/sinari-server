@@ -481,6 +481,28 @@ describe("PATCH /api/users/current", () => {
   });
 });
 
+describe("GET /api/users", () => {
+  afterEach(async () => {
+    await UserTest.delete();
+  });
+
+  let token = "";
+
+  it.only("should get users", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const response = await TestRequest.get("/api/users", token);
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+  });
+});
+
 describe("DELETE /api/users/logout", () => {
   beforeEach(async () => {
     await UserTest.create();

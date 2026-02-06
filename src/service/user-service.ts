@@ -5,6 +5,7 @@ import { ResponseError } from "../error/response-error";
 import {
   toEmailVerificationResponse,
   toForgotPasswordResponse,
+  toListUserResponse,
   toUserResponse,
   toUserResponseWithToken,
   type CreateUserRequest,
@@ -12,9 +13,12 @@ import {
   type EmailVerificationResponse,
   type ForgotPasswordRequest,
   type ForgotPasswordResponse,
+  type ListUserResponse,
   type LoginUserRequest,
   type ResetPasswordRequest,
   type ResetPasswordResponse,
+  type SearchUserRequest,
+  type UpdateRoleRequest,
   type UpdateUserRequest,
   type UserResponse,
 } from "../model/user-model";
@@ -23,10 +27,16 @@ import { UserValidation } from "../validation/user-validation";
 import { Validation } from "../validation/validation";
 import bcrypt from "bcrypt";
 import { v4 as uuid } from "uuid";
-import type { User } from "../../generated/prisma/client";
+import {
+  UserRole,
+  type Prisma,
+  type User,
+} from "../../generated/prisma/client";
 import type { GooglePayload } from "../type/google-type";
 import { Mail } from "../utils/mail";
 import { sign } from "hono/jwt";
+import type { Pageable } from "../model/page-model";
+import { redis } from "../lib/redis";
 
 export class UserService {
   static async register(request: CreateUserRequest): Promise<UserResponse> {
@@ -205,6 +215,163 @@ export class UserService {
     return toUserResponse(result);
   }
 
+  static async search(
+    user: User,
+    request: SearchUserRequest,
+  ): Promise<Pageable<UserResponse>> {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    const searchRequest = Validation.validate(UserValidation.SEARCH, request);
+
+    const skip = (searchRequest.page - 1) * searchRequest.size;
+
+    const andFilters: Prisma.UserWhereInput[] = [];
+
+    if (searchRequest.is_online === true) {
+      const keys = await redis.keys("online_users:*");
+
+      const onlineIds = keys
+        .map((key) => Number(key.split(":")[1]))
+        .filter((id) => !isNaN(id));
+
+      if (onlineIds.length > 0) {
+        andFilters.push({
+          id: {
+            in: onlineIds,
+          },
+        });
+      } else {
+        andFilters.push({ id: -1 });
+      }
+    }
+
+    if (searchRequest.name) {
+      andFilters.push({
+        OR: [
+          { name: { contains: searchRequest.name } },
+          { username: { contains: searchRequest.username } },
+        ],
+      });
+    }
+
+    if (searchRequest.role) {
+      andFilters.push({
+        role: searchRequest.role,
+      });
+    }
+
+    if (searchRequest.is_online !== undefined) {
+      const keys = await redis.keys("online_users:*");
+      const onlineIds = keys
+        .map((key) => Number(key.split(":")[1]))
+        .filter((id) => !isNaN(id));
+
+      if (searchRequest.is_online === true) {
+        if (onlineIds.length > 0) {
+          andFilters.push({ id: { in: onlineIds } });
+        } else {
+          andFilters.push({ id: -1 });
+        }
+      } else {
+        if (onlineIds.length > 0) {
+          andFilters.push({ id: { notIn: onlineIds } });
+        }
+      }
+    }
+
+    const whereClause: Prisma.UserWhereInput = {
+      AND: andFilters,
+    };
+
+    const users = await prismaClient.user.findMany({
+      where: whereClause,
+      take: searchRequest.size,
+      skip: skip,
+      orderBy: {
+        [searchRequest.sort_by || "created_at" || "name"]:
+          searchRequest.sort_order || "desc",
+      },
+    });
+
+    const totalItems = await prismaClient.user.count({
+      where: whereClause,
+    });
+
+    const data = await Promise.all(
+      users.map(async (user) => {
+        const isOnline = await redis.exists(`online_users:${user.id}`);
+
+        const userResponse = toListUserResponse(user);
+
+        return {
+          ...userResponse,
+          is_online: isOnline === 1,
+        };
+      }),
+    );
+
+    return {
+      data: data,
+      paging: {
+        size: searchRequest.size,
+        current_page: searchRequest.page,
+        total_page: Math.ceil(totalItems / searchRequest.size),
+      },
+    };
+  }
+
+  static async updateRole(
+    user: User,
+    request: UpdateRoleRequest,
+  ): Promise<ListUserResponse> {
+    if (user.role !== UserRole.OWNER) {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    const updateRoleRequest = Validation.validate(
+      UserValidation.UPDATE_ROLE,
+      request,
+    );
+
+    if (user.id === updateRoleRequest.id) {
+      throw new ResponseError(400, "You cannot update your own role");
+    }
+
+    const updatedUserRole = await prismaClient.user.findUnique({
+      where: {
+        id: updateRoleRequest.id,
+      },
+    });
+
+    if (!updatedUserRole) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    if (updatedUserRole.role === UserRole.OWNER) {
+      throw new ResponseError(403, "Cannot change role of another Owner");
+    }
+
+    const updateUserRole = await prismaClient.user.update({
+      where: {
+        id: updateRoleRequest.id,
+      },
+      data: {
+        role: updateRoleRequest.role,
+      },
+    });
+
+    const isOnline = await redis.exists(`online_users:${updatedUserRole.id}`);
+
+    const response = toListUserResponse(updateUserRole);
+
+    return {
+      ...response,
+      is_online: isOnline === 1,
+    };
+  }
+
   static async logout(user: User): Promise<UserResponse> {
     const result = await prismaClient.user.update({
       where: {
@@ -216,6 +383,67 @@ export class UserService {
     });
 
     return toUserResponse(result);
+  }
+
+  static async checkUserExist(id: number): Promise<UserResponse> {
+    const user = await prismaClient.user.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!user) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    return user;
+  }
+
+  static async removeUser(user: User, id: number): Promise<boolean> {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    if (user.id === id) {
+      throw new ResponseError(400, "You cannot delete your own account");
+    }
+
+    const targetUser = await prismaClient.user.findUnique({
+      where: { id: id },
+    });
+
+    if (!targetUser) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      if (
+        targetUser.role === UserRole.ADMIN ||
+        targetUser.role === UserRole.OWNER
+      ) {
+        throw new ResponseError(
+          403,
+          "Forbidden: Admins cannot delete other Admins or Owners",
+        );
+      }
+    }
+
+    if (user.role === UserRole.OWNER) {
+      if (targetUser.role === UserRole.OWNER) {
+        throw new ResponseError(
+          403,
+          "Forbidden: Owners cannot delete other Owners",
+        );
+      }
+    }
+
+    await prismaClient.user.delete({
+      where: {
+        id: id,
+      },
+    });
+
+    return true;
   }
 
   static async loginWithGoogle(
@@ -306,7 +534,7 @@ export class UserService {
             username: username,
             name: googlePayload.name,
             password: null,
-            role: "customer",
+            role: UserRole.CUSTOMER,
             token: null,
             is_verified: true,
             verify_token: null,
