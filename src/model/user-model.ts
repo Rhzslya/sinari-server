@@ -1,12 +1,25 @@
-import type { User } from "../../generated/prisma/client";
+import type { User, UserRole } from "../../generated/prisma/client";
 
 export type UserResponse = {
+  id: number;
   username: string;
   email: string;
   name: string;
-  role: string;
+  role: UserRole;
   token?: string | null;
   google_id?: string | null;
+};
+
+export type ListUserResponse = {
+  id: number;
+  username: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  google_id?: string | null;
+  is_online?: boolean;
+  created_at: Date;
+  updated_at?: Date;
 };
 
 export type CreateUserRequest = {
@@ -37,6 +50,22 @@ export type UpdateUserRequest = {
   current_password?: string;
 };
 
+export type UpdateRoleRequest = {
+  id: number;
+  role: UserRole;
+};
+
+export type SearchUserRequest = {
+  username?: string;
+  name?: string;
+  page: number;
+  size: number;
+  sort_by?: "created_at" | "name";
+  sort_order?: "asc" | "desc";
+  is_online?: boolean;
+  role?: UserRole;
+};
+
 export type EmailVerificationResponse = {
   email: string;
   message: string;
@@ -63,6 +92,7 @@ export type ResetPasswordResponse = {
 
 export function toUserResponse(user: User): UserResponse {
   return {
+    id: user.id,
     username: user.username,
     email: user.email,
     name: user.name,
@@ -75,6 +105,19 @@ export function toUserResponseWithToken(user: User): UserResponse {
   return {
     ...toUserResponse(user),
     google_id: user.google_id,
+  };
+}
+
+export function toListUserResponse(user: User): ListUserResponse {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    username: user.username,
+    role: user.role,
+    google_id: user.google_id,
+    created_at: user.created_at,
+    updated_at: user.updated_at,
   };
 }
 
