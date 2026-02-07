@@ -5,7 +5,7 @@ import { ResponseError } from "../error/response-error";
 import {
   toEmailVerificationResponse,
   toForgotPasswordResponse,
-  toListUserResponse,
+  toNotPublicUserResponse,
   toUserResponse,
   toUserResponseWithToken,
   type CreateUserRequest,
@@ -13,7 +13,7 @@ import {
   type EmailVerificationResponse,
   type ForgotPasswordRequest,
   type ForgotPasswordResponse,
-  type ListUserResponse,
+  type NotPublicUserResponse,
   type LoginUserRequest,
   type ResetPasswordRequest,
   type ResetPasswordResponse,
@@ -156,8 +156,30 @@ export class UserService {
     return response;
   }
 
+  static async checkUserExists(id: number): Promise<User> {
+    const user = await prismaClient.user.findUnique({
+      where: {
+        id: id,
+      },
+    });
+    if (!user) {
+      throw new ResponseError(404, "User not found");
+    }
+    return user;
+  }
+
   static async get(user: User): Promise<UserResponse> {
     return toUserResponse(user);
+  }
+
+  static async getById(user: User, id: number): Promise<NotPublicUserResponse> {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    const targetUser = await this.checkUserExists(id);
+
+    return toNotPublicUserResponse(targetUser);
   }
 
   static async update(
@@ -303,7 +325,7 @@ export class UserService {
       users.map(async (user) => {
         const isOnline = await redis.exists(`online_users:${user.id}`);
 
-        const userResponse = toListUserResponse(user);
+        const userResponse = toNotPublicUserResponse(user);
 
         return {
           ...userResponse,
@@ -325,7 +347,7 @@ export class UserService {
   static async updateRole(
     user: User,
     request: UpdateRoleRequest,
-  ): Promise<ListUserResponse> {
+  ): Promise<NotPublicUserResponse> {
     if (user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
@@ -339,18 +361,36 @@ export class UserService {
       throw new ResponseError(400, "You cannot update your own role");
     }
 
-    const updatedUserRole = await prismaClient.user.findUnique({
+    const targetUser = await prismaClient.user.findUnique({
       where: {
         id: updateRoleRequest.id,
       },
     });
 
-    if (!updatedUserRole) {
+    if (!targetUser) {
       throw new ResponseError(404, "User not found");
     }
 
-    if (updatedUserRole.role === UserRole.OWNER) {
-      throw new ResponseError(403, "Cannot change role of another Owner");
+    const rootOwner = process.env.ROOT_OWNER;
+
+    if (targetUser.email === rootOwner) {
+      throw new ResponseError(
+        403,
+        "SECURITY ALERT: You cannot modify the Root Owner account.",
+      );
+    }
+
+    if (
+      targetUser.role === UserRole.OWNER &&
+      updateRoleRequest.role !== UserRole.OWNER
+    ) {
+      const totalOwners = await prismaClient.user.count({
+        where: { role: UserRole.OWNER },
+      });
+
+      if (totalOwners <= 1) {
+        throw new ResponseError(409, "Cannot demote the last remaining Owner.");
+      }
     }
 
     const updateUserRole = await prismaClient.user.update({
@@ -362,9 +402,9 @@ export class UserService {
       },
     });
 
-    const isOnline = await redis.exists(`online_users:${updatedUserRole.id}`);
+    const isOnline = await redis.exists(`online_users:${targetUser.id}`);
 
-    const response = toListUserResponse(updateUserRole);
+    const response = toNotPublicUserResponse(updateUserRole);
 
     return {
       ...response,

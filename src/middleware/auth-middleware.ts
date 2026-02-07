@@ -33,7 +33,13 @@ export const authMiddleware = async (
     });
 
     if (!user) {
-      return c.json({ errors: "Unauthorized - Session Expired" }, 401);
+      return c.json(
+        {
+          errors: "Session expired. You are logged in on another device.",
+          code: "SESSION_EXPIRED",
+        },
+        401,
+      );
     }
 
     c.set("user", user);
@@ -46,6 +52,12 @@ export const authMiddleware = async (
 
     await next();
   } catch (e) {
-    return c.json({ errors: "Unauthorized - Invalid Token" }, 401);
+    return c.json(
+      {
+        errors: "Invalid or expired token",
+        code: "INVALID_TOKEN",
+      },
+      401,
+    );
   }
 };

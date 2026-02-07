@@ -51,6 +51,24 @@ export class UserController {
     }
   }
 
+  static async getById(c: Context) {
+    try {
+      const user = c.var.user;
+
+      const id = Number(c.req.param("id"));
+
+      if (isNaN(id)) {
+        throw new ResponseError(400, "Invalid user ID");
+      }
+
+      const response = await UserService.getById(user, id);
+
+      return c.json({ data: response });
+    } catch (error) {
+      throw error;
+    }
+  }
+
   static async update(c: Context) {
     try {
       const user = c.var.user;

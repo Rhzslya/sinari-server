@@ -19,6 +19,8 @@ apiRouter.delete("/api/users/logout", UserController.logout);
 
 apiRouter.patch("/api/users/:id", ownerMiddleware, UserController.updateRole);
 
+apiRouter.get("/api/users/:id", adminMiddleware, UserController.getById);
+
 apiRouter.delete("/api/users/:id", adminMiddleware, UserController.removeUser);
 
 apiRouter.use("/api/services/*", adminMiddleware);

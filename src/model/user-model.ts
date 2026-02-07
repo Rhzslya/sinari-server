@@ -10,7 +10,7 @@ export type UserResponse = {
   google_id?: string | null;
 };
 
-export type ListUserResponse = {
+export type NotPublicUserResponse = {
   id: number;
   username: string;
   email: string;
@@ -108,7 +108,7 @@ export function toUserResponseWithToken(user: User): UserResponse {
   };
 }
 
-export function toListUserResponse(user: User): ListUserResponse {
+export function toNotPublicUserResponse(user: User): NotPublicUserResponse {
   return {
     id: user.id,
     name: user.name,
