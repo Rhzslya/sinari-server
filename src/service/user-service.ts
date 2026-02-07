@@ -608,8 +608,6 @@ export class UserService {
       throw new ResponseError(404, "Invalid or expired verification token");
     }
 
-    logger.debug(user);
-
     await prismaClient.user.update({
       where: {
         id: user.id,

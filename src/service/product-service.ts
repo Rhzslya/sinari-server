@@ -48,7 +48,7 @@ export class ProductsService {
 
     if (countExistingProduct > 0) {
       throw new ResponseError(
-        400,
+        409,
         "Product already exists (Same Name, Brand, Manufacturer & Category)",
       );
     }

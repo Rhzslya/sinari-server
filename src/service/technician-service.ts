@@ -119,6 +119,21 @@ export class TechnicianService {
 
     const oldTechnician = await this.checkTechnicianExist(updateRequest.id);
 
+    if (updateRequest.name) {
+      const countName = await prismaClient.technician.count({
+        where: {
+          name: updateRequest.name,
+          id: {
+            not: updateRequest.id,
+          },
+        },
+      });
+
+      if (countName > 0) {
+        throw new ResponseError(409, "Technician name already exists");
+      }
+    }
+
     let imageUrl = oldTechnician.signature_url;
 
     if (updateRequest.delete_image === true) {
