@@ -22,6 +22,28 @@ export type NotPublicUserResponse = {
   updated_at?: Date;
 };
 
+export type DetailedUserResponse = {
+  id: number;
+  name: string;
+  username: string;
+  email: string;
+  role: UserRole;
+  is_verified: boolean;
+  google_id: string | null;
+
+  created_at: string;
+  updated_at: string;
+
+  verify_expires_at: string | null;
+  resend_count: number;
+  last_resend_time: string | null;
+
+  password_reset_expires_at: string | null;
+  pass_reset_count: number;
+  pass_reset_last_time: string | null;
+  is_online?: boolean;
+};
+
 export type CreateUserRequest = {
   email: string;
   username: string;
@@ -118,6 +140,27 @@ export function toNotPublicUserResponse(user: User): NotPublicUserResponse {
     google_id: user.google_id,
     created_at: user.created_at,
     updated_at: user.updated_at,
+  };
+}
+
+export function toDetailedUserResponse(user: User): DetailedUserResponse {
+  return {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    email: user.email,
+    role: user.role as UserRole,
+    is_verified: user.is_verified,
+    google_id: user.google_id,
+    created_at: user.created_at.toISOString(),
+    updated_at: user.updated_at.toISOString(),
+    verify_expires_at: user.verify_expires_at?.toISOString() || null,
+    resend_count: user.resend_count,
+    last_resend_time: user.last_resend_time?.toISOString() || null,
+    password_reset_expires_at:
+      user.password_reset_expires_at?.toISOString() || null,
+    pass_reset_count: user.pass_reset_count,
+    pass_reset_last_time: user.pass_reset_last_time?.toISOString() || null,
   };
 }
 

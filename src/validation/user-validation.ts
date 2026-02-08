@@ -4,7 +4,7 @@ import { UserRole } from "../../generated/prisma/enums";
 export class UserValidation {
   static readonly REGISTER = z.object({
     email: email().min(1).max(100),
-    username: z.string().min(1).max(100),
+    username: z.string().min(3).max(100),
     password: z.string().min(1).max(100),
     name: z.string().min(1).max(100),
   });
