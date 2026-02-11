@@ -21,6 +21,8 @@ import {
   type UpdateRoleRequest,
   type UpdateUserRequest,
   type UserResponse,
+  type DetailedUserResponse,
+  toDetailedUserResponse,
 } from "../model/user-model";
 import { GoogleAuth } from "../utils/google-auth";
 import { UserValidation } from "../validation/user-validation";
@@ -127,6 +129,13 @@ export class UserService {
       );
     }
 
+    if (!user.is_active) {
+      throw new ResponseError(
+        403,
+        "Access denied. Your account is no longer active.",
+      );
+    }
+
     const payload = {
       id: user.id,
       username: user.username,
@@ -172,14 +181,23 @@ export class UserService {
     return toUserResponse(user);
   }
 
-  static async getById(user: User, id: number): Promise<NotPublicUserResponse> {
+  // UserService.ts
+
+  static async getById(user: User, id: number): Promise<DetailedUserResponse> {
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
     const targetUser = await this.checkUserExists(id);
 
-    return toNotPublicUserResponse(targetUser);
+    const isOnlineCheck = await redis.exists(`online_users:${targetUser.id}`);
+
+    const userDetailed = toDetailedUserResponse(targetUser);
+
+    return {
+      ...userDetailed,
+      is_online: isOnlineCheck === 1,
+    };
   }
 
   static async update(
@@ -251,24 +269,6 @@ export class UserService {
 
     const andFilters: Prisma.UserWhereInput[] = [];
 
-    if (searchRequest.is_online === true) {
-      const keys = await redis.keys("online_users:*");
-
-      const onlineIds = keys
-        .map((key) => Number(key.split(":")[1]))
-        .filter((id) => !isNaN(id));
-
-      if (onlineIds.length > 0) {
-        andFilters.push({
-          id: {
-            in: onlineIds,
-          },
-        });
-      } else {
-        andFilters.push({ id: -1 });
-      }
-    }
-
     if (searchRequest.name) {
       andFilters.push({
         OR: [
@@ -304,6 +304,7 @@ export class UserService {
     }
 
     const whereClause: Prisma.UserWhereInput = {
+      is_active: true,
       AND: andFilters,
     };
 
@@ -477,9 +478,13 @@ export class UserService {
       }
     }
 
-    await prismaClient.user.delete({
+    await prismaClient.user.update({
       where: {
         id: id,
+      },
+      data: {
+        is_active: false,
+        token: null,
       },
     });
 
@@ -513,10 +518,9 @@ export class UserService {
       if (!user.google_id) {
         throw new ResponseError(
           409,
-          `We found an existing account for '${googlePayload.email}'. Sign-in using your password.`,
+          "Account exists. Please login with your password.",
         );
       }
-
       // Security check extra
       if (user.google_id !== googlePayload.google_id) {
         throw new ResponseError(409, "Account conflict. Google ID mismatch.");

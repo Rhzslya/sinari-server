@@ -20,6 +20,7 @@ export type NotPublicUserResponse = {
   is_online?: boolean;
   created_at: Date;
   updated_at?: Date;
+  is_active: boolean;
 };
 
 export type DetailedUserResponse = {
@@ -42,6 +43,7 @@ export type DetailedUserResponse = {
   pass_reset_count: number;
   pass_reset_last_time: string | null;
   is_online?: boolean;
+  is_active: boolean;
 };
 
 export type CreateUserRequest = {
@@ -140,6 +142,7 @@ export function toNotPublicUserResponse(user: User): NotPublicUserResponse {
     google_id: user.google_id,
     created_at: user.created_at,
     updated_at: user.updated_at,
+    is_active: user.is_active,
   };
 }
 
@@ -161,6 +164,7 @@ export function toDetailedUserResponse(user: User): DetailedUserResponse {
       user.password_reset_expires_at?.toISOString() || null,
     pass_reset_count: user.pass_reset_count,
     pass_reset_last_time: user.pass_reset_last_time?.toISOString() || null,
+    is_active: user.is_active,
   };
 }
 
