@@ -114,6 +114,14 @@ export type SearchServiceRequest = {
   sort_order?: "asc" | "desc";
 };
 
+export type DetailedServiceRequest = {
+  id: number;
+};
+
+export type DeleteServiceRequest = {
+  id: number;
+};
+
 export function toServiceResponse(
   service: Service & { service_list: ServiceItem[]; technician: Technician },
 ): ServiceResponse {

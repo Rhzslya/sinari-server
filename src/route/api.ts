@@ -7,6 +7,7 @@ import { adminMiddleware } from "../middleware/admin-middleware";
 import { ProductController } from "../controller/product-controller";
 import { TechnicianController } from "../controller/technician-controller";
 import { ownerMiddleware } from "../middleware/owner-middleware";
+import { ServiceLogController } from "../controller/repair-logs-controller";
 
 export const apiRouter = new Hono<{ Variables: ApplicationVariables }>();
 apiRouter.use(authMiddleware);
@@ -18,6 +19,11 @@ apiRouter.patch("/api/users/current", UserController.update);
 apiRouter.delete("/api/users/logout", UserController.logout);
 
 apiRouter.patch("/api/users/:id", ownerMiddleware, UserController.updateRole);
+apiRouter.get(
+  "/api/services/:id/logs",
+  ownerMiddleware,
+  ServiceLogController.get,
+);
 
 apiRouter.get("/api/users/:id", adminMiddleware, UserController.getById);
 

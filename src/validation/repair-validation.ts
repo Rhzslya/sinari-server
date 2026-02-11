@@ -23,7 +23,7 @@ export class RepairValidation {
         }),
       )
       .min(1),
-    down_payment: z.number().min(0).positive().optional(),
+    down_payment: z.number().min(0).optional(),
     discount: z.number().min(0).max(100).optional(),
     technician_id: z.number().positive(),
   });

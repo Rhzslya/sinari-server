@@ -1,4 +1,5 @@
 import {
+  ServiceStatus,
   UserRole,
   type Prisma,
   type User,
@@ -119,6 +120,28 @@ export class TechnicianService {
 
     const oldTechnician = await this.checkTechnicianExist(updateRequest.id);
 
+    if (updateRequest.is_active === false && oldTechnician.is_active === true) {
+      const ongoingServiceCount = await prismaClient.service.count({
+        where: {
+          technician_id: updateRequest.id,
+          status: {
+            notIn: [
+              ServiceStatus.FINISHED,
+              ServiceStatus.CANCELLED,
+              ServiceStatus.TAKEN,
+            ],
+          },
+        },
+      });
+
+      if (ongoingServiceCount > 0) {
+        throw new ResponseError(
+          400,
+          "Cannot Update To Inactive: Technician has ongoing services",
+        );
+      }
+    }
+
     if (updateRequest.name) {
       const countName = await prismaClient.technician.count({
         where: {
@@ -175,6 +198,16 @@ export class TechnicianService {
     }
 
     const technician = await this.checkTechnicianExist(id);
+
+    const relatedServicesCount = await prismaClient.service.count({
+      where: {
+        technician_id: id,
+      },
+    });
+
+    if (relatedServicesCount > 0) {
+      throw new ResponseError(400, "Cannot Delete: Technician has services");
+    }
 
     if (technician.signature_url) {
       await CloudinaryService.deleteImage(technician.signature_url);

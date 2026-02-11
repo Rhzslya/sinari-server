@@ -12,6 +12,10 @@ import { prismaClient } from "../application/database";
 import { ResponseError } from "../error/response-error";
 import type { Pageable } from "../model/page-model";
 import {
+  toServiceLogResponse,
+  type ServiceLogResponse,
+} from "../model/repair-logs-model";
+import {
   toPublicServiceResponse,
   toServiceResponse,
   type CreateServiceRequest,
@@ -107,7 +111,15 @@ export class ServicesDataService {
             id: createRequest.technician_id,
           },
         },
+        service_logs: {
+          create: {
+            user_id: user.id,
+            action: "CREATED",
+            description: `Service ticket created and assigned to technician ID ${createRequest.technician_id}`,
+          },
+        },
       },
+
       include: {
         service_list: true,
         technician: true,
@@ -169,6 +181,122 @@ export class ServicesDataService {
 
     const oldService = await this.checkServiceExists(updateRequest.id);
 
+    const lockedStatuses: ServiceStatus[] = [
+      ServiceStatus.FINISHED,
+      ServiceStatus.CANCELLED,
+      ServiceStatus.TAKEN,
+    ];
+
+    const isCurrentlyLocked = lockedStatuses.includes(
+      oldService.status as ServiceStatus,
+    );
+
+    const isCompletelyFinal =
+      oldService.status === ServiceStatus.CANCELLED ||
+      oldService.status === ServiceStatus.TAKEN;
+
+    if (isCompletelyFinal) {
+      const isTryingToChangeAnything =
+        (updateRequest.customer_name &&
+          updateRequest.customer_name !== oldService.customer_name) ||
+        (updateRequest.phone_number &&
+          formatPhoneNumber(updateRequest.phone_number) !==
+            oldService.phone_number) ||
+        (updateRequest.brand && updateRequest.brand !== oldService.brand) ||
+        (updateRequest.model && updateRequest.model !== oldService.model) ||
+        (updateRequest.status && updateRequest.status !== oldService.status) ||
+        (updateRequest.description !== undefined &&
+          updateRequest.description !== oldService.description) ||
+        (updateRequest.technician_note !== undefined &&
+          updateRequest.technician_note !== oldService.technician_note);
+
+      if (isTryingToChangeAnything) {
+        throw new ResponseError(
+          400,
+          `Fraud Prevention: Service is already ${oldService.status}. No further changes are allowed.`,
+        );
+      }
+    }
+
+    if (updateRequest.status && updateRequest.status !== oldService.status) {
+      const newStatus = updateRequest.status as ServiceStatus;
+
+      if (
+        oldService.status === ServiceStatus.TAKEN &&
+        (newStatus === ServiceStatus.PENDING ||
+          newStatus === ServiceStatus.PROCESS)
+      ) {
+        throw new ResponseError(400, "Fraud Prevention: Service already taken");
+      }
+      if (
+        oldService.status === ServiceStatus.FINISHED &&
+        (newStatus === ServiceStatus.PENDING ||
+          newStatus === ServiceStatus.PROCESS)
+      ) {
+        throw new ResponseError(
+          400,
+          "Fraud Prevention: Service already finished",
+        );
+      }
+      if (
+        oldService.status === ServiceStatus.CANCELLED &&
+        (newStatus === ServiceStatus.PENDING ||
+          newStatus === ServiceStatus.PROCESS)
+      ) {
+        throw new ResponseError(
+          400,
+          "Fraud Prevention: Service already cancelled",
+        );
+      }
+    }
+
+    if (isCurrentlyLocked) {
+      let isTryingToChangeMoney = false;
+
+      if (
+        updateRequest.down_payment !== undefined &&
+        updateRequest.down_payment !== oldService.down_payment
+      ) {
+        isTryingToChangeMoney = true;
+      }
+
+      if (
+        updateRequest.discount !== undefined &&
+        updateRequest.discount !== oldService.discount
+      ) {
+        isTryingToChangeMoney = true;
+      }
+
+      if (updateRequest.service_list) {
+        const oldSubTotal = oldService.service_list.reduce(
+          (acc, item) => acc + item.price,
+          0,
+        );
+        const newSubTotal = updateRequest.service_list.reduce(
+          (acc, item) => acc + item.price,
+          0,
+        );
+
+        if (
+          oldSubTotal !== newSubTotal ||
+          oldService.service_list.length !== updateRequest.service_list.length
+        ) {
+          isTryingToChangeMoney = true;
+        }
+      }
+
+      const isTryingToChangeTechnician =
+        updateRequest.technician_id &&
+        updateRequest.technician_id !== oldService.technician_id;
+
+      if (isTryingToChangeMoney || isTryingToChangeTechnician) {
+        throw new ResponseError(
+          400,
+          "Fraud Prevention: Cannot change technician, items, or money on a locked service.",
+        );
+      }
+    }
+
     if (updateRequest.technician_id) {
       const technician = await prismaClient.technician.findUnique({
         where: {
@@ -211,6 +339,65 @@ export class ServicesDataService {
       );
     }
 
+    let logMessages: string[] = [];
+    let mainAction = "UPDATE_INFO";
+
+    if (updateRequest.status && updateRequest.status !== oldService.status) {
+      logMessages.push(
+        `Status changed from ${oldService.status} to ${updateRequest.status}`,
+      );
+      mainAction = "UPDATE_STATUS";
+    }
+
+    if (
+      updateRequest.down_payment !== undefined &&
+      updateRequest.down_payment !== oldService.down_payment
+    ) {
+      logMessages.push(
+        `Down Payment changed from ${oldService.down_payment} to ${updateRequest.down_payment}`,
+      );
+      mainAction = "UPDATE_DOWN_PAYMENT";
+    }
+
+    if (
+      updateRequest.discount !== undefined &&
+      updateRequest.discount !== oldService.discount
+    ) {
+      logMessages.push(
+        `Discount changed from ${oldService.discount} to ${updateRequest.discount}`,
+      );
+      mainAction = "UPDATE_DISCOUNT";
+    }
+
+    if (
+      updateRequest.technician_id &&
+      updateRequest.technician_id !== oldService.technician_id
+    ) {
+      logMessages.push(`Assigned technician ${updateRequest.technician_id}`);
+      mainAction = "UPDATE_TECHNICIAN";
+    }
+
+    if (updateRequest.service_list) {
+      const oldSubTotal = oldService.service_list.reduce(
+        (acc, item) => acc + item.price,
+        0,
+      );
+      const newSubTotal = updateRequest.service_list.reduce(
+        (acc, item) => acc + item.price,
+        0,
+      );
+
+      if (
+        oldSubTotal !== newSubTotal ||
+        oldService.service_list.length !== updateRequest.service_list.length
+      ) {
+        logMessages.push(
+          `Service list changed from ${oldSubTotal} to ${newSubTotal}`,
+        );
+        mainAction = "UPDATE_SERVICE_LIST";
+      }
+    }
+
     const updateData: Prisma.ServiceUpdateInput = {
       brand: updateRequest.brand,
       model: updateRequest.model,
@@ -241,16 +428,39 @@ export class ServicesDataService {
       };
     }
 
-    const service = await prismaClient.service.update({
-      where: {
-        id: updateRequest.id,
-      },
-      data: updateData,
-      include: {
-        service_list: true,
-        technician: true,
-      },
-    });
+    let service;
+
+    if (logMessages.length > 0) {
+      const finalLogDescription = logMessages.join(", ");
+
+      const [updatedService, _newLog] = await prismaClient.$transaction([
+        prismaClient.service.update({
+          where: { id: updateRequest.id },
+          data: updateData,
+          include: { service_list: true, technician: true },
+        }),
+        prismaClient.serviceLog.create({
+          data: {
+            service_id: updateRequest.id,
+            user_id: user.id,
+            action: mainAction,
+            description: finalLogDescription,
+          },
+        }),
+      ]);
+      service = updatedService;
+    } else {
+      service = await prismaClient.service.update({
+        where: {
+          id: updateRequest.id,
+        },
+        data: updateData,
+        include: {
+          service_list: true,
+          technician: true,
+        },
+      });
+    }
 
     let whatsappMeta: {
       wa_status: "skipped" | "sent" | "failed";
@@ -289,8 +499,33 @@ export class ServicesDataService {
     };
   }
 
+  static async getLogs(
+    user: User,
+    serviceId: number,
+  ): Promise<ServiceLogResponse[]> {
+    if (user.role !== UserRole.OWNER) {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    await this.checkServiceExists(serviceId);
+
+    const logs = await prismaClient.serviceLog.findMany({
+      where: {
+        service_id: serviceId,
+      },
+      include: {
+        user: true,
+      },
+      orderBy: {
+        created_at: "desc",
+      },
+    });
+
+    return logs.map(toServiceLogResponse);
+  }
+
   static async remove(user: User, id: number): Promise<boolean> {
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
+    if (user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
