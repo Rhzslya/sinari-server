@@ -609,7 +609,7 @@ describe("PATCH /api/products/:id", () => {
     const product = await ProductTest.create();
 
     const mockUpload = jest
-      .spyOn(CloudinaryService, "uploadImage")
+      .spyOn(CloudinaryService, "uploadImageProduct")
       .mockResolvedValue("https://mock-url.com/gambar-baru.jpg");
 
     const formData = new FormData();

@@ -185,6 +185,29 @@ describe("POST /api/auth/login", () => {
     );
   });
 
+  it("should reject if user is banned", async () => {
+    await UserTest.ban();
+
+    const requestBody: LoginUserRequest = {
+      username: "test",
+      password: "test",
+    };
+
+    const response = await TestRequest.post<LoginUserRequest>(
+      "/api/auth/login",
+      requestBody,
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(403);
+    expect(body.errors).toBe(
+      "Access denied. Your account is no longer active.",
+    );
+  });
+
   it("should reject login if username is wrong", async () => {
     const requestBody: LoginUserRequest = {
       username: "wrong",
@@ -488,7 +511,7 @@ describe("GET /api/users", () => {
 
   let token = "";
 
-  it.only("should get users", async () => {
+  it("should get users", async () => {
     await UserTest.createAdmin();
     const user = await UserTest.get();
     token = user.token!;
@@ -500,6 +523,85 @@ describe("GET /api/users", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.length).toBe(1);
+  });
+
+  it("should reject request with invalid token", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const response = await TestRequest.get("/api/users", "wrong_token");
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(401);
+    expect(body.errors).toBeDefined();
+  });
+
+  it("should reject request if no token provided", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const response = await TestRequest.get("/api/users");
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(401);
+    expect(body.errors).toBeDefined();
+  });
+
+  it("should reject request if token is expired", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    await UserTest.delete();
+
+    const response = await TestRequest.get("/api/users", token);
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(401);
+    expect(body.errors).toBeDefined();
+  });
+
+  it("should reject if user not admin", async () => {
+    await UserTest.create();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const response = await TestRequest.get("/api/users", token);
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(403);
+    expect(body.errors).toBeDefined();
+  });
+
+  it("should reject request if user is banned", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    await UserTest.ban();
+
+    const response = await TestRequest.get("/api/users", token);
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(403);
+    expect(body.errors).toBeDefined();
   });
 });
 

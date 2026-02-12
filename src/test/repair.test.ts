@@ -1,5 +1,6 @@
 import { describe, afterEach, beforeEach, it, expect } from "bun:test";
 import {
+  ServiceLogTest,
   ServiceTest,
   TechnicianTest,
   TestRequest,
@@ -18,9 +19,10 @@ describe("POST /api/services", () => {
   });
 
   afterEach(async () => {
-    await UserTest.delete();
+    await ServiceLogTest.delete();
     await ServiceTest.deleteAll();
     await TechnicianTest.delete();
+    await UserTest.delete();
   });
 
   let token = "";
@@ -461,6 +463,98 @@ describe("POST /api/services", () => {
     expect(response.status).toBe(400);
     expect(body.errors).toContain("Invalid technician ID");
   });
+
+  it("should reject create service if assigned technician is inactive", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const inactiveTechnician = await prismaClient.technician.create({
+      data: {
+        name: "test",
+        is_active: false,
+      },
+    });
+
+    const requestBody: CreateServiceRequest = {
+      brand: "OTHER",
+      model: "test",
+      customer_name: "test",
+      phone_number: "08123",
+      service_list: [{ name: "Fix", price: 1000 }],
+      technician_id: inactiveTechnician.id,
+    };
+
+    const response = await TestRequest.post<CreateServiceRequest>(
+      "/api/services",
+      requestBody,
+      token,
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(400);
+    expect(body.errors).toContain("inactive technician");
+  });
+
+  it("should reject create service if down payment exceeds total price", async () => {
+    await UserTest.createAdmin();
+    const technician = await TechnicianTest.create();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const requestBody: CreateServiceRequest = {
+      brand: "OTHER",
+      model: "test",
+      customer_name: "test",
+      phone_number: "08123",
+      service_list: [{ name: "Service A", price: 100000 }],
+      down_payment: 150000,
+      technician_id: technician.id,
+    };
+
+    const response = await TestRequest.post<CreateServiceRequest>(
+      "/api/services",
+      requestBody,
+      token,
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(400);
+    expect(body.errors).toBeDefined();
+  });
+
+  it("should create service if user is OWNER", async () => {
+    await UserTest.createOwner();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const technician = await TechnicianTest.create();
+
+    const requestBody: CreateServiceRequest = {
+      brand: "OTHER",
+      model: "test",
+      customer_name: "test",
+      phone_number: "08123",
+      service_list: [{ name: "Service A", price: 100000 }],
+      down_payment: 50000,
+      technician_id: technician.id,
+    };
+
+    const response = await TestRequest.post<CreateServiceRequest>(
+      "/api/services",
+      requestBody,
+      token,
+    );
+
+    const body = await response.json();
+    expect(response.status).toBe(200);
+  });
 });
 
 describe("GET /api/services/:id", () => {
@@ -795,17 +889,197 @@ describe("PATCH /api/services/:id", () => {
     expect(response.status).toBe(404);
     expect(body.errors).toBeDefined();
   });
+
+  it("should reject update if service is already TAKEN (Strict Lock)", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const service = await ServiceTest.create();
+    await prismaClient.service.update({
+      where: { id: service.id },
+      data: { status: "TAKEN" },
+    });
+
+    const requestBody: UpdateServiceRequest = {
+      id: service.id,
+      description: "Trying to sneak an update",
+    };
+
+    const response = await TestRequest.patch<UpdateServiceRequest>(
+      `/api/services/${service.id}`,
+      requestBody,
+      token,
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(400);
+    expect(body.errors).toContain("Service is already TAKEN");
+  });
+
+  it("should reject reverting status from FINISHED to PENDING", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const service = await ServiceTest.create();
+    await prismaClient.service.update({
+      where: { id: service.id },
+      data: { status: "FINISHED" },
+    });
+
+    const requestBody: UpdateServiceRequest = {
+      id: service.id,
+      status: "PENDING",
+    };
+
+    const response = await TestRequest.patch<UpdateServiceRequest>(
+      `/api/services/${service.id}`,
+      requestBody,
+      token,
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(400);
+    expect(body.errors).toContain("Service already finished");
+  });
+
+  it("should reject changing financials if service is FINISHED", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const service = await ServiceTest.create();
+    await prismaClient.service.update({
+      where: { id: service.id },
+      data: { status: "FINISHED" },
+    });
+
+    const requestBody: UpdateServiceRequest = {
+      id: service.id,
+      discount: 50,
+    };
+
+    const response = await TestRequest.patch<UpdateServiceRequest>(
+      `/api/services/${service.id}`,
+      requestBody,
+      token,
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(400);
+    expect(body.errors).toContain("Cannot change technician, items, or money");
+  });
+
+  it("should reject update if down payment exceeds total price", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const service = await ServiceTest.create();
+
+    const requestBody: UpdateServiceRequest = {
+      id: service.id,
+      down_payment: 500000,
+    };
+
+    const response = await TestRequest.patch<UpdateServiceRequest>(
+      `/api/services/${service.id}`,
+      requestBody,
+      token,
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+    expect(response.status).toBe(400);
+    expect(body.errors).toContain("Calculated total price cannot be negative");
+  });
+
+  it("should reject changing to an inactive technician", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const service = await ServiceTest.create();
+
+    const inactiveTech = await prismaClient.technician.create({
+      data: { name: "test", is_active: false },
+    });
+
+    const requestBody: UpdateServiceRequest = {
+      id: service.id,
+      technician_id: inactiveTech.id,
+    };
+
+    const response = await TestRequest.patch<UpdateServiceRequest>(
+      `/api/services/${service.id}`,
+      requestBody,
+      token,
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(400);
+    expect(body.errors).toContain("inactive technician");
+  });
+
+  it("should create logs when updating service", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const service = await ServiceTest.create();
+
+    const requestBody: UpdateServiceRequest = {
+      id: service.id,
+      status: "PROCESS",
+      technician_note: "Checking...",
+    };
+
+    const response = await TestRequest.patch<UpdateServiceRequest>(
+      `/api/services/${service.id}`,
+      requestBody,
+      token,
+    );
+
+    expect(response.status).toBe(200);
+
+    const logs = await prismaClient.serviceLog.findMany({
+      where: { service_id: service.id },
+      orderBy: { created_at: "desc" },
+    });
+
+    expect(logs.length).toBeGreaterThan(0);
+
+    const latestLog = logs[0];
+    expect(latestLog.action).toBe("UPDATE_STATUS");
+    expect(latestLog.description).toContain("PENDING to PROCESS");
+  });
 });
 
 describe("DELETE /api/services/:id", () => {
   afterEach(async () => {
+    await ServiceLogTest.delete();
     await ServiceTest.deleteAll();
     await UserTest.delete();
   });
 
   let token = "";
-  it("should delete service if user is admin", async () => {
-    await UserTest.createAdmin();
+
+  it("should delete service if user is OWNER", async () => {
+    await UserTest.createOwner();
     const user = await UserTest.get();
     token = user.token!;
 
@@ -827,11 +1101,34 @@ describe("DELETE /api/services/:id", () => {
         id: service.id,
       },
     });
-
     expect(checkService).toBeNull();
   });
 
-  it("should delete service if user is admin google", async () => {
+  it("should REJECT delete service if user is ADMIN", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const service = await ServiceTest.create();
+
+    const response = await TestRequest.delete(
+      `/api/services/${service.id}`,
+      token,
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(403);
+    expect(body.errors).toContain("Forbidden");
+
+    const checkService = await prismaClient.service.findUnique({
+      where: { id: service.id },
+    });
+    expect(checkService).not.toBeNull();
+  });
+
+  it("should REJECT delete service if user is ADMIN GOOGLE", async () => {
     await UserTest.createAdminGoogle();
     const user = await UserTest.get();
     token = user.token!;
@@ -844,21 +1141,13 @@ describe("DELETE /api/services/:id", () => {
     );
 
     const body = await response.json();
-
     logger.debug(body);
 
-    expect(response.status).toBe(200);
-
-    const checkService = await prismaClient.service.findUnique({
-      where: {
-        id: service.id,
-      },
-    });
-
-    expect(checkService).toBeNull();
+    expect(response.status).toBe(403);
+    expect(body.errors).toBeDefined();
   });
 
-  it("should reject delete service if user is not admin", async () => {
+  it("should reject delete service if user is not admin (User Biasa)", async () => {
     await UserTest.create();
     const user = await UserTest.get();
     token = user.token!;
@@ -871,47 +1160,37 @@ describe("DELETE /api/services/:id", () => {
     );
 
     const body = await response.json();
-
-    logger.debug(body);
-
     expect(response.status).toBe(403);
     expect(body.errors).toBeDefined();
   });
 
   it("should reject delete service if service id is invalid", async () => {
-    await UserTest.createAdmin();
+    await UserTest.createOwner();
     const user = await UserTest.get();
     token = user.token!;
 
     const service = await ServiceTest.create();
 
     const response = await TestRequest.delete(
-      `/api/services/${service.id + 1}`,
+      `/api/services/${service.id + 9999}`,
       token,
     );
 
     const body = await response.json();
-
-    logger.debug(body);
-
     expect(response.status).toBe(404);
     expect(body.errors).toBeDefined();
   });
 
   it("should reject delete service if token is invalid", async () => {
-    await UserTest.createAdmin();
-
+    await UserTest.createOwner();
     const service = await ServiceTest.create();
 
     const response = await TestRequest.delete(
-      `/api/services/${service.id + 1}`,
+      `/api/services/${service.id}`,
       "wrong_token",
     );
 
     const body = await response.json();
-
-    logger.debug(body);
-
     expect(response.status).toBe(401);
     expect(body.errors).toBeDefined();
   });
@@ -919,11 +1198,27 @@ describe("DELETE /api/services/:id", () => {
 
 describe("GET /api/services", () => {
   afterEach(async () => {
+    await ServiceLogTest.delete();
     await ServiceTest.deleteAll();
+    await TechnicianTest.delete();
     await UserTest.delete();
   });
 
   let token = "";
+
+  it("should search service if user is OWNER", async () => {
+    await UserTest.createOwner();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    await ServiceTest.create();
+
+    const response = await TestRequest.get("/api/services", token);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBeGreaterThan(0);
+  });
 
   it("should search service if user is admin", async () => {
     await UserTest.createAdmin();
@@ -1075,6 +1370,148 @@ describe("GET /api/services", () => {
     expect(body.paging.current_page).toBe(1);
     expect(body.paging.total_page).toBe(1);
     expect(body.paging.size).toBe(10);
+  });
+
+  it("should search service filter by price range", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+    const technician = await TechnicianTest.create();
+
+    await prismaClient.service.create({
+      data: {
+        service_id: "SRV-CHEAP",
+        brand: "OTHER",
+        model: "Cheap Phone",
+        customer_name: "A",
+        phone_number: "081",
+        status: "PENDING",
+        tracking_token: "t1",
+        technician_id: technician.id,
+        total_price: 10000,
+        discount: 0,
+      },
+    });
+
+    await prismaClient.service.create({
+      data: {
+        service_id: "SRV-EXPENSIVE",
+        brand: "OTHER",
+        model: "Expensive Phone",
+        customer_name: "B",
+        phone_number: "082",
+        status: "PENDING",
+        tracking_token: "t2",
+        technician_id: technician.id,
+        total_price: 1000000,
+        discount: 0,
+      },
+    });
+
+    const queryParams = new URLSearchParams({
+      min_price: "500000",
+      max_price: "2000000",
+    }).toString();
+
+    const response = await TestRequest.get(
+      `/api/services?${queryParams}`,
+      token,
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.data[0].total_price).toBe(1000000);
+  });
+
+  it("should search service filter by Brand", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+    const technician = await TechnicianTest.create();
+
+    await prismaClient.service.create({
+      data: {
+        service_id: "SRV-SAMSUNG",
+        brand: "SAMSUNG",
+        model: "S24",
+        customer_name: "A",
+        phone_number: "081",
+        status: "PENDING",
+        tracking_token: "t1",
+        technician_id: technician.id,
+        total_price: 0,
+        discount: 0,
+      },
+    });
+
+    await prismaClient.service.create({
+      data: {
+        service_id: "SRV-APPLE",
+        brand: "APPLE",
+        model: "iPhone 15",
+        customer_name: "B",
+        phone_number: "082",
+        status: "PENDING",
+        tracking_token: "t2",
+        technician_id: technician.id,
+        total_price: 0,
+        discount: 0,
+      },
+    });
+
+    const queryParams = new URLSearchParams({
+      brand: "SAMSUNG",
+    }).toString();
+
+    const response = await TestRequest.get(
+      `/api/services?${queryParams}`,
+      token,
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.data[0].brand).toBe("SAMSUNG");
+  });
+
+  it("should search service by technician name (global search)", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.get();
+    token = user.token!;
+
+    const tech = await prismaClient.technician.create({
+      data: { name: "test", is_active: true },
+    });
+
+    await prismaClient.service.create({
+      data: {
+        service_id: "SRV-TECH-SEARCH",
+        brand: "OTHER",
+        model: "Phone",
+        customer_name: "Customer A",
+        phone_number: "081",
+        status: "PENDING",
+        tracking_token: "t1",
+        technician_id: tech.id,
+        total_price: 0,
+        discount: 0,
+      },
+    });
+
+    const queryParams = new URLSearchParams({
+      customer_name: "test",
+    }).toString();
+
+    const response = await TestRequest.get(
+      `/api/services?${queryParams}`,
+      token,
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.length).toBe(1);
+    expect(body.data[0].technician.name).toBe("test");
   });
 
   it("should search service using page", async () => {

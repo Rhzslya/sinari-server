@@ -1,4 +1,8 @@
-import type { Service, User } from "../../generated/prisma/client";
+import {
+  UserRole,
+  type Service,
+  type User,
+} from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { web } from "../application/web";
 import bcrypt from "bcrypt";
@@ -63,14 +67,51 @@ export class UserTest {
         token: "test_token",
         is_verified: true,
         verify_token: null,
-        role: "admin",
+        role: UserRole.ADMIN,
       },
     });
 
     const payload = {
       id: user.id,
       username: user.username,
-      role: "admin",
+      role: UserRole.ADMIN,
+      name: user.name,
+      email: user.email,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+    };
+
+    const token = await sign(
+      payload,
+      process.env.JWT_SECRET || "secret",
+      "HS256",
+    );
+
+    await prismaClient.user.update({
+      where: { id: user.id },
+      data: { token: token },
+    });
+
+    return token;
+  }
+  static async createOwner(): Promise<string> {
+    const password = await bcrypt.hash("test", 10);
+    const user = await prismaClient.user.create({
+      data: {
+        email: "test@gmail.com",
+        username: "test",
+        password: password,
+        name: "test",
+        token: "test_token",
+        is_verified: true,
+        verify_token: null,
+        role: UserRole.OWNER,
+      },
+    });
+
+    const payload = {
+      id: user.id,
+      username: user.username,
+      role: UserRole.OWNER,
       name: user.name,
       email: user.email,
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
@@ -127,14 +168,14 @@ export class UserTest {
         token: "test_token",
         is_verified: true,
         verify_token: null,
-        role: "admin",
+        role: UserRole.ADMIN,
       },
     });
 
     const payload = {
       id: user.id,
       username: user.username,
-      role: "admin",
+      role: UserRole.ADMIN,
       name: user.name,
       email: user.email,
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
@@ -172,6 +213,17 @@ export class UserTest {
       data: {
         is_verified: false,
         verify_token: null,
+      },
+    });
+  }
+
+  static async ban() {
+    await prismaClient.user.update({
+      where: {
+        username: "test",
+      },
+      data: {
+        is_active: false,
       },
     });
   }
@@ -229,6 +281,25 @@ export class ServiceTest {
   }
 }
 
+export class ServiceLogTest {
+  static async delete() {
+    await prismaClient.serviceLog.deleteMany({
+      where: {},
+    });
+  }
+
+  static async create() {
+    await prismaClient.serviceLog.create({
+      data: {
+        user_id: 1,
+        action: "CREATED",
+        description: "test",
+        service_id: 1,
+      },
+    });
+  }
+}
+
 export class ProductTest {
   static async delete() {
     await prismaClient.product.deleteMany({
@@ -258,11 +329,7 @@ export class ProductTest {
 export class TechnicianTest {
   static async delete() {
     await prismaClient.technician.deleteMany({
-      where: {
-        name: {
-          contains: "test",
-        },
-      },
+      where: {},
     });
   }
 
