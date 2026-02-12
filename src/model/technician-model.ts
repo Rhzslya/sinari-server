@@ -31,7 +31,7 @@ export type SearchTechnicianRequest = {
   is_active?: boolean;
   page: number;
   size: number;
-  sort_by?: "created_at" | "is_active";
+  sort_by?: "created_at" | "is_active" | "name";
   sort_order?: "asc" | "desc";
 };
 

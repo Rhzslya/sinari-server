@@ -52,7 +52,7 @@ export class TechnicianValidation {
         return Boolean(val);
       }, z.boolean().default(true))
       .optional(),
-    sort_by: z.enum(["created_at", "is_active"]).optional(),
+    sort_by: z.enum(["created_at", "is_active", "name"]).optional(),
     sort_order: z.enum(["asc", "desc"]).optional(),
   });
 }
