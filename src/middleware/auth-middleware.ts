@@ -42,6 +42,16 @@ export const authMiddleware = async (
       );
     }
 
+    if (!user.is_active) {
+      return c.json(
+        {
+          errors: "Your account has been banned or is inactive.",
+          code: "ACCOUNT_BANNED",
+        },
+        403,
+      );
+    }
+
     c.set("user", user);
 
     try {
