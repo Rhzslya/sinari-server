@@ -55,6 +55,7 @@ export class RepairValidation {
     brand: z.enum(BRAND_VALUES).optional(),
     model: z.string().min(1).max(100).optional(),
     customer_name: z.string().min(1).max(100).optional(),
+    technician_name: z.string().min(1).max(100).optional(),
     phone_number: z.string().min(1).max(100).optional(),
     min_price: z.coerce.number().min(0).optional(),
     max_price: z.coerce.number().min(0).optional(),

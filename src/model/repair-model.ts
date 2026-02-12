@@ -105,6 +105,7 @@ export type SearchServiceRequest = {
   brand?: Brand;
   model?: string;
   customer_name?: string;
+  technician_name?: string;
   status?: ServiceStatus;
   page: number;
   size: number;

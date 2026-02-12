@@ -25,6 +25,7 @@ import {
   type UpdateServiceRequest,
 } from "../model/repair-model";
 import { formatPhoneNumber } from "../utils/format-phone-number";
+import { fmt } from "../utils/format-rupiah";
 import { generateServiceId } from "../utils/id-generator";
 import { RepairValidation } from "../validation/repair-validation";
 import { Validation } from "../validation/validation";
@@ -115,7 +116,7 @@ export class ServicesDataService {
           create: {
             user_id: user.id,
             action: "CREATED",
-            description: `Service ticket created and assigned to technician ID ${createRequest.technician_id}`,
+            description: `Service ticket created and assigned to technician ID ${createRequest.technician_id}, Total Bill : ${fmt(totalPrice)} `,
           },
         },
       },
@@ -342,6 +343,13 @@ export class ServicesDataService {
     let logMessages: string[] = [];
     let mainAction = "UPDATE_INFO";
 
+    const oldSubTotal = oldService.service_list.reduce(
+      (acc, item) => acc + item.price,
+      0,
+    );
+    const oldDiscAmount = (oldSubTotal * oldService.discount) / 100;
+    const oldGrandTotal = oldSubTotal - oldDiscAmount - oldService.down_payment;
+
     if (updateRequest.status && updateRequest.status !== oldService.status) {
       logMessages.push(
         `Status changed from ${oldService.status} to ${updateRequest.status}`,
@@ -354,7 +362,7 @@ export class ServicesDataService {
       updateRequest.down_payment !== oldService.down_payment
     ) {
       logMessages.push(
-        `Down Payment changed from ${oldService.down_payment} to ${updateRequest.down_payment}`,
+        `Down Payment changed from ${fmt(oldService.down_payment)} to ${fmt(updateRequest.down_payment)}`,
       );
       mainAction = "UPDATE_DOWN_PAYMENT";
     }
@@ -364,7 +372,7 @@ export class ServicesDataService {
       updateRequest.discount !== oldService.discount
     ) {
       logMessages.push(
-        `Discount changed from ${oldService.discount} to ${updateRequest.discount}`,
+        `Discount changed from ${oldService.discount}% to ${updateRequest.discount}%`,
       );
       mainAction = "UPDATE_DISCOUNT";
     }
@@ -373,28 +381,73 @@ export class ServicesDataService {
       updateRequest.technician_id &&
       updateRequest.technician_id !== oldService.technician_id
     ) {
-      logMessages.push(`Assigned technician ${updateRequest.technician_id}`);
+      logMessages.push(
+        `Assigned technician with ID${updateRequest.technician_id}`,
+      );
       mainAction = "UPDATE_TECHNICIAN";
     }
 
     if (updateRequest.service_list) {
-      const oldSubTotal = oldService.service_list.reduce(
-        (acc, item) => acc + item.price,
-        0,
-      );
-      const newSubTotal = updateRequest.service_list.reduce(
-        (acc, item) => acc + item.price,
-        0,
+      let remainingOldItems = [...oldService.service_list];
+      let remainingNewItems = [...updateRequest.service_list];
+
+      let hasListChanged = false;
+      for (let i = remainingNewItems.length - 1; i >= 0; i--) {
+        const newItem = remainingNewItems[i];
+        const exactMatchIndex = remainingOldItems.findIndex(
+          (old) =>
+            old.name.toLowerCase() === newItem.name.toLowerCase() &&
+            old.price === newItem.price,
+        );
+
+        if (exactMatchIndex !== -1) {
+          remainingOldItems.splice(exactMatchIndex, 1);
+          remainingNewItems.splice(i, 1);
+        }
+      }
+
+      for (let i = remainingNewItems.length - 1; i >= 0; i--) {
+        const newItem = remainingNewItems[i];
+        const nameMatchIndex = remainingOldItems.findIndex(
+          (old) => old.name.toLowerCase() === newItem.name.toLowerCase(),
+        );
+
+        if (nameMatchIndex !== -1) {
+          const oldItem = remainingOldItems[nameMatchIndex];
+
+          logMessages.push(
+            `Price for "${newItem.name}" updated from ${fmt(oldItem.price)} to ${fmt(newItem.price)}`,
+          );
+          hasListChanged = true;
+
+          remainingOldItems.splice(nameMatchIndex, 1);
+          remainingNewItems.splice(i, 1);
+        }
+      }
+
+      for (const newItem of remainingNewItems) {
+        logMessages.push(
+          `Added item: "${newItem.name}" (+${fmt(newItem.price)})`,
+        );
+        hasListChanged = true;
+      }
+      for (const oldItem of remainingOldItems) {
+        logMessages.push(
+          `Removed item: "${oldItem.name}" (-${fmt(oldItem.price)})`,
+        );
+        hasListChanged = true;
+      }
+      if (hasListChanged) {
+        mainAction = "UPDATE_SERVICE_LIST";
+      }
+    }
+    if (oldGrandTotal !== totalPrice) {
+      logMessages.push(
+        `Total Bill updated from ${fmt(oldGrandTotal)} to ${fmt(totalPrice)}`,
       );
 
-      if (
-        oldSubTotal !== newSubTotal ||
-        oldService.service_list.length !== updateRequest.service_list.length
-      ) {
-        logMessages.push(
-          `Service list changed from ${oldSubTotal} to ${newSubTotal}`,
-        );
-        mainAction = "UPDATE_SERVICE_LIST";
+      if (mainAction === "UPDATE_INFO") {
+        mainAction = "UPDATE_FINANCIALS";
       }
     }
 
@@ -571,7 +624,20 @@ export class ServicesDataService {
         OR: [
           { customer_name: { contains: searchRequest.customer_name } },
           { model: { contains: searchRequest.customer_name } },
+          {
+            technician: {
+              name: { contains: searchRequest.customer_name },
+            },
+          },
         ],
+      });
+    }
+
+    if (searchRequest.phone_number) {
+      andFilters.push({
+        phone_number: {
+          contains: searchRequest.phone_number,
+        },
       });
     }
 
