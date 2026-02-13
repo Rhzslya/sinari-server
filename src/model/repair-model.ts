@@ -1,3 +1,7 @@
+import {
+  ServiceLogAction,
+  type ServiceLog,
+} from "../../generated/prisma/browser";
 import type {
   Brand,
   Service,
@@ -27,6 +31,7 @@ export type ServiceResponse = {
   created_at: Date;
   updated_at?: Date;
   tracking_token: string;
+  grace_period_start?: Date | null;
   service_id: string;
   technician: {
     id: number;
@@ -107,6 +112,7 @@ export type SearchServiceRequest = {
   customer_name?: string;
   technician_name?: string;
   status?: ServiceStatus;
+  is_deleted?: boolean;
   page: number;
   size: number;
   min_price?: number;
@@ -123,8 +129,15 @@ export type DeleteServiceRequest = {
   id: number;
 };
 
+export type RestoreServiceRequest = {
+  id: number;
+};
+
 export function toServiceResponse(
-  service: Service & { service_list: ServiceItem[]; technician: Technician },
+  service: Service & {
+    service_list: ServiceItem[];
+    technician: Technician;
+  },
 ): ServiceResponse {
   return {
     id: service.id,
@@ -150,6 +163,7 @@ export function toServiceResponse(
     created_at: service.created_at,
     updated_at: service.updated_at,
     tracking_token: service.tracking_token,
+    grace_period_start: service.grace_period_start,
     technician: {
       id: service.technician.id,
       name: service.technician.name,

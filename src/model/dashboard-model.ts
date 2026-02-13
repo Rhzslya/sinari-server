@@ -19,6 +19,7 @@ export type DashboardStatsResponse = {
     service_pk: number;
     customer_name: string;
     time: string;
+    is_deleted: boolean;
   }[];
 };
 
@@ -38,6 +39,7 @@ export type DashboardServiceResult = {
     service_id: string;
     service_pk: number;
     customer_name: string;
+    is_deleted: boolean;
   }[];
 };
 
@@ -63,6 +65,7 @@ export function toDashboardStatsResponse(
       service_id: log.service_id,
       service_pk: log.service_pk,
       customer_name: log.customer_name,
+      is_deleted: log.is_deleted,
     })),
   };
 }

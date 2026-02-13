@@ -88,6 +88,24 @@ export class ServiceController {
     }
   }
 
+  static async restore(c: Context) {
+    try {
+      const user = c.var.user as User;
+
+      const id = Number(c.req.param("id"));
+
+      if (isNaN(id)) {
+        throw new ResponseError(400, "Invalid service ID");
+      }
+
+      const response = await ServicesDataService.restore(user, { id });
+
+      return c.json(response);
+    } catch (error) {
+      throw error;
+    }
+  }
+
   static async search(c: Context) {
     try {
       const user = c.var.user as User;
@@ -102,6 +120,10 @@ export class ServiceController {
         status: rawStatus
           ? (rawStatus.toUpperCase() as ServiceStatus)
           : undefined,
+        is_deleted: c.req.query("is_deleted")
+          ? c.req.query("is_deleted") === "true"
+          : undefined,
+
         page: c.req.query("page") ? Number(c.req.query("page")) : 1,
         size: c.req.query("size") ? Number(c.req.query("size")) : 10,
 

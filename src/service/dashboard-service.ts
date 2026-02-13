@@ -1,4 +1,8 @@
-import { ServiceStatus, type User } from "../../generated/prisma/client";
+import {
+  ServiceStatus,
+  UserRole,
+  type User,
+} from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import {
   toDashboardStatsResponse,
@@ -7,7 +11,7 @@ import {
 
 export class DashboardService {
   static async getStats(user: User): Promise<DashboardStatsResponse> {
-    if (user.role !== "ADMIN" && user.role !== "OWNER") {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new Error("Forbidden: Insufficient permissions");
     }
 
@@ -88,9 +92,14 @@ export class DashboardService {
         take: 5,
         orderBy: { created_at: "desc" },
         include: {
-          user: { select: { name: true, role: true } },
+          user: { select: { username: true, role: true } },
           service: {
-            select: { id: true, service_id: true, customer_name: true },
+            select: {
+              id: true,
+              service_id: true,
+              customer_name: true,
+              deleted_at: true,
+            },
           },
         },
       }),
@@ -124,13 +133,14 @@ export class DashboardService {
 
     const formattedLogs = recentLogs.map((log) => ({
       id: log.id,
-      user_name: log.user.name,
+      user_name: log.user.username,
       action: log.action,
       description: log.description,
       time: log.created_at.toISOString(),
       service_id: log.service.service_id,
       service_pk: log.service.id,
       customer_name: log.service.customer_name,
+      is_deleted: log.service.deleted_at !== null,
     }));
 
     const currentTotal = currentRevenue._sum.total_price || 0;

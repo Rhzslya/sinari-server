@@ -60,9 +60,17 @@ export class RepairValidation {
     min_price: z.coerce.number().min(0).optional(),
     max_price: z.coerce.number().min(0).optional(),
     status: z.enum(SERVICE_STATUS_VALUES).optional(),
+    is_deleted: z.preprocess((val) => {
+      if (typeof val === "string") return val === "true";
+      return Boolean(val);
+    }, z.boolean().optional()),
     page: z.coerce.number().min(1).positive().default(1),
     size: z.coerce.number().min(1).max(100).positive().default(10),
     sort_by: z.enum(["total_price", "created_at", "updated_at"]).optional(),
     sort_order: z.enum(["asc", "desc"]).optional(),
+  });
+
+  static readonly RESTORE = z.object({
+    id: z.coerce.number().min(1).positive(),
   });
 }

@@ -67,6 +67,7 @@ export class TechnicianService {
     const technician = await prismaClient.technician.findUnique({
       where: {
         id: id,
+        deleted_at: null,
       },
     });
 
@@ -92,7 +93,7 @@ export class TechnicianService {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
     const technicians = await prismaClient.technician.findMany({
-      where: { is_active: true },
+      where: { is_active: true, deleted_at: null },
       select: {
         id: true,
         name: true,
@@ -131,6 +132,7 @@ export class TechnicianService {
               ServiceStatus.TAKEN,
             ],
           },
+          deleted_at: null,
         },
       });
 
@@ -197,25 +199,34 @@ export class TechnicianService {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const technician = await this.checkTechnicianExist(id);
+    await this.checkTechnicianExist(id);
 
-    const relatedServicesCount = await prismaClient.service.count({
+    const activeOngoingServices = await prismaClient.service.count({
       where: {
         technician_id: id,
+        deleted_at: null,
+        status: {
+          notIn: [
+            ServiceStatus.FINISHED,
+            ServiceStatus.CANCELLED,
+            ServiceStatus.TAKEN,
+          ],
+        },
       },
     });
 
-    if (relatedServicesCount > 0) {
-      throw new ResponseError(400, "Cannot Delete: Technician has services");
+    if (activeOngoingServices > 0) {
+      throw new ResponseError(
+        400,
+        "Cannot delete technician: They still have active ongoing jobs.",
+      );
     }
 
-    if (technician.signature_url) {
-      await CloudinaryService.deleteImage(technician.signature_url);
-    }
-
-    await prismaClient.technician.delete({
-      where: {
-        id: id,
+    await prismaClient.technician.update({
+      where: { id: id },
+      data: {
+        deleted_at: new Date(),
+        is_active: false,
       },
     });
 
@@ -252,6 +263,7 @@ export class TechnicianService {
     }
 
     const whereClause: Prisma.TechnicianWhereInput = {
+      deleted_at: null,
       AND: andFilters,
     };
 

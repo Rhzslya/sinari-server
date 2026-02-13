@@ -48,6 +48,7 @@ model User {
   pass_reset_last_time DateTime?
 
   service_logs ServiceLog[]
+  product_logs ProductLog[]
 
   is_active Boolean @default(true)
 
@@ -64,6 +65,8 @@ model Technician {
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+
+  deleted_at DateTime?
 
   @@map("technicians")
 }
@@ -95,6 +98,11 @@ model Service {
   technician    Technician   @relation(fields: [technician_id], references: [id])
   service_logs  ServiceLog[]
 
+  deleted_at DateTime?
+
+  grace_period_start DateTime?
+
+  @@index([deleted_at])
   @@map("services")
 }
 
@@ -115,7 +123,7 @@ model ServiceLog {
   service_id Int
   user_id    Int
 
-  action      String @db.VarChar(50)
+  action      ServiceLogAction
   description String @db.Text
 
   created_at DateTime @default(now())
@@ -124,6 +132,19 @@ model ServiceLog {
   user    User    @relation(fields: [user_id], references: [id])
 
   @@map("service_logs")
+}
+
+enum ServiceLogAction {
+  CREATED
+  UPDATE_INFO
+  UPDATE_STATUS
+  UPDATE_TECHNICIAN
+  UPDATE_SERVICE_LIST
+  UPDATE_DISCOUNT
+  UPDATE_DOWN_PAYMENT
+  UPDATE_FINANCIALS
+  DELETED
+  RESTORED
 }
 
 enum ServiceStatus {
@@ -148,7 +169,34 @@ model Product {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  product_logs ProductLog[]
+
   @@map("products")
+}
+
+model ProductLog{
+  id         Int      @id @default(autoincrement())
+  product_id Int
+  user_id    Int
+  action     ProductLogAction
+  quantity_change Int
+  description String
+  created_at DateTime @default(now())
+
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [user_id], references: [id])
+
+  @@map("product_logs")
+}
+
+enum ProductLogAction {
+  CREATED          
+  UPDATED           
+  RESTOCK           
+  SALE_OFFLINE      
+  ADJUST_DAMAGE     
+  ADJUST_LOST      
+  ADJUST_OPNAME     
 }
 
 enum Brand {

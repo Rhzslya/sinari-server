@@ -1,13 +1,17 @@
-import type { ServiceLog, User } from "../../generated/prisma/client";
+import type {
+  ServiceLog,
+  ServiceLogAction,
+  User,
+} from "../../generated/prisma/client";
 
 export type ServiceLogResponse = {
   id: number;
   service_id: number;
-  action: string;
+  action: ServiceLogAction;
   description: string;
   created_at: Date;
   user: {
-    name: string;
+    username: string;
     role: string;
   };
 };
@@ -22,7 +26,7 @@ export function toServiceLogResponse(
     description: log.description,
     created_at: log.created_at,
     user: {
-      name: log.user.name,
+      username: log.user.username,
       role: log.user.role,
     },
   };

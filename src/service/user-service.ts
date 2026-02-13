@@ -169,6 +169,7 @@ export class UserService {
     const user = await prismaClient.user.findUnique({
       where: {
         id: id,
+        is_active: true,
       },
     });
     if (!user) {

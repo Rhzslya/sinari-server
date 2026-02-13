@@ -11,47 +11,81 @@ import { ServiceLogController } from "../controller/repair-logs-controller";
 import { DashboardController } from "../controller/dashboard-controller";
 
 export const apiRouter = new Hono<{ Variables: ApplicationVariables }>();
+
+// 1. Global Auth
 apiRouter.use(authMiddleware);
 
-// User API
-apiRouter.get("/api/users", adminMiddleware, UserController.search);
+// ================= USER API =================
 apiRouter.get("/api/users/current", UserController.get);
 apiRouter.patch("/api/users/current", UserController.update);
 apiRouter.delete("/api/users/logout", UserController.logout);
 
+// Admin & Owner Routes
+apiRouter.get("/api/users", adminMiddleware, UserController.search);
 apiRouter.patch("/api/users/:id", ownerMiddleware, UserController.updateRole);
+apiRouter.get("/api/users/:id", adminMiddleware, UserController.getById);
+apiRouter.delete("/api/users/:id", adminMiddleware, UserController.removeUser);
+
+// ================= SERVICE API =================
+apiRouter.get("/api/services", adminMiddleware, ServiceController.search);
+apiRouter.post("/api/services", adminMiddleware, ServiceController.create);
+
+// Route Service Logs
 apiRouter.get(
   "/api/services/:id/logs",
   ownerMiddleware,
   ServiceLogController.get,
 );
 
-apiRouter.get("/api/users/:id", adminMiddleware, UserController.getById);
+// RESTORE
+apiRouter.patch(
+  "/api/services/:id/restore",
+  ownerMiddleware,
+  ServiceController.restore,
+);
 
-apiRouter.delete("/api/users/:id", adminMiddleware, UserController.removeUser);
+// CRUD Standard (Admin)
+apiRouter.get("/api/services/:id", adminMiddleware, ServiceController.get);
+apiRouter.patch("/api/services/:id", adminMiddleware, ServiceController.update);
+apiRouter.delete(
+  "/api/services/:id",
+  adminMiddleware,
+  ServiceController.remove,
+);
 
-apiRouter.use("/api/services/*", adminMiddleware);
-// Service API
-apiRouter.post("/api/services", ServiceController.create);
-apiRouter.get("/api/services/:id", ServiceController.get);
-apiRouter.patch("/api/services/:id", ServiceController.update);
-apiRouter.delete("/api/services/:id", ServiceController.remove);
-apiRouter.get("/api/services", ServiceController.search);
-
+// ================= PRODUCT API =================
 apiRouter.use("/api/products/*", adminMiddleware);
-// Product API
+apiRouter.get("/api/products", adminMiddleware, ProductController.search);
+
 apiRouter.post("/api/products", ProductController.create);
 apiRouter.get("/api/products/:id", ProductController.get);
 apiRouter.patch("/api/products/:id", ProductController.update);
 apiRouter.delete("/api/products/:id", ProductController.remove);
 
-// Technician API
-apiRouter.post("/api/technicians", TechnicianController.create);
-apiRouter.get("/api/technicians/active", TechnicianController.listActive);
-apiRouter.get("/api/technicians", TechnicianController.search);
-apiRouter.patch("/api/technicians/:id", TechnicianController.update);
-apiRouter.get("/api/technicians/:id", TechnicianController.get);
-apiRouter.delete("/api/technicians/:id", TechnicianController.remove);
+// ================= TECHNICIAN API =================
+apiRouter.post(
+  "/api/technicians",
+  adminMiddleware,
+  TechnicianController.create,
+);
 
-// Dahboard API
+apiRouter.get("/api/technicians/active", TechnicianController.listActive);
+
+// Search & Detail
+apiRouter.get("/api/technicians", TechnicianController.search);
+apiRouter.get("/api/technicians/:id", TechnicianController.get);
+
+// Update & Delete
+apiRouter.patch(
+  "/api/technicians/:id",
+  adminMiddleware,
+  TechnicianController.update,
+);
+apiRouter.delete(
+  "/api/technicians/:id",
+  adminMiddleware,
+  TechnicianController.remove,
+);
+
+// ================= DASHBOARD API =================
 apiRouter.get("/api/dashboard/stats", adminMiddleware, DashboardController.get);
