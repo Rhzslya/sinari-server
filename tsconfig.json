@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "outDir": "./dist",
+    "types": ["bun-types"],
 
     // Enable latest features
     "lib": ["ESNext", "DOM"],
