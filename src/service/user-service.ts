@@ -23,6 +23,7 @@ import {
   type UserResponse,
   type DetailedUserResponse,
   toDetailedUserResponse,
+  type RestoreUserRequest,
 } from "../model/user-model";
 import { GoogleAuth } from "../utils/google-auth";
 import { UserValidation } from "../validation/user-validation";
@@ -97,8 +98,8 @@ export class UserService {
     let user = await prismaClient.user.findFirst({
       where: {
         OR: [
-          { email: loginRequest.email },
-          { username: loginRequest.username },
+          { email: loginRequest.identifier },
+          { username: loginRequest.identifier },
         ],
       },
     });
@@ -116,7 +117,7 @@ export class UserService {
 
     const isPasswordCorrect = await bcrypt.compare(
       loginRequest.password,
-      user.password!,
+      user.password,
     );
     if (!isPasswordCorrect) {
       throw new ResponseError(401, "Username or password is wrong");
@@ -129,7 +130,7 @@ export class UserService {
       );
     }
 
-    if (!user.is_active) {
+    if (user.deleted_at !== null) {
       throw new ResponseError(
         403,
         "Access denied. Your account is no longer active.",
@@ -169,7 +170,7 @@ export class UserService {
     const user = await prismaClient.user.findUnique({
       where: {
         id: id,
-        is_active: true,
+        deleted_at: null,
       },
     });
     if (!user) {
@@ -305,7 +306,7 @@ export class UserService {
     }
 
     const whereClause: Prisma.UserWhereInput = {
-      is_active: true,
+      deleted_at: searchRequest.is_deleted ? { not: null } : null,
       AND: andFilters,
     };
 
@@ -458,6 +459,10 @@ export class UserService {
       throw new ResponseError(404, "User not found");
     }
 
+    if (targetUser.deleted_at !== null) {
+      throw new ResponseError(400, "User is already deleted");
+    }
+
     if (user.role === UserRole.ADMIN) {
       if (
         targetUser.role === UserRole.ADMIN ||
@@ -484,12 +489,50 @@ export class UserService {
         id: id,
       },
       data: {
-        is_active: false,
+        deleted_at: new Date(),
         token: null,
       },
     });
 
     return true;
+  }
+
+  static async restoreUser(
+    user: User,
+    request: RestoreUserRequest,
+  ): Promise<NotPublicUserResponse> {
+    if (user.role !== UserRole.OWNER) {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    const restoreRequest = Validation.validate(UserValidation.RESTORE, request);
+
+    const userInTrash = await prismaClient.user.findFirst({
+      where: {
+        id: restoreRequest.id,
+        deleted_at: { not: null },
+      },
+    });
+
+    if (!userInTrash) {
+      throw new ResponseError(
+        404,
+        "User not found in trash bin. It might be active or permanently deleted.",
+      );
+    }
+
+    const restoredUser = await prismaClient.user.update({
+      where: {
+        id: restoreRequest.id,
+      },
+      data: {
+        deleted_at: null,
+      },
+    });
+
+    await Mail.sendRestoredUser(restoredUser.email!, restoredUser.name!);
+
+    return toNotPublicUserResponse(restoredUser);
   }
 
   static async loginWithGoogle(

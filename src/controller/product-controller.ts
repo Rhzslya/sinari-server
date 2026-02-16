@@ -102,6 +102,31 @@ export class ProductController {
     }
   }
 
+  static async updateStock(c: Context) {
+    try {
+      const user = c.var.user as User;
+      const id = Number(c.req.param("id"));
+
+      if (isNaN(id)) {
+        throw new ResponseError(400, "Invalid product ID");
+      }
+
+      const body = await c.req.json();
+
+      const request = {
+        id: id,
+        stock: body.stock,
+        stock_action: body.stock_action,
+      };
+
+      const response = await ProductsService.updateStock(user, request);
+
+      return c.json({ data: response });
+    } catch (error) {
+      throw error;
+    }
+  }
+
   static async remove(c: Context) {
     try {
       const user = c.var.user as User;
@@ -114,8 +139,26 @@ export class ProductController {
       await ProductsService.remove(user, id);
 
       return c.json({
+        data: true,
         message: `Product With ID ${id} deleted successfully`,
       });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async restore(c: Context) {
+    try {
+      const user = c.var.user as User;
+      const id = Number(c.req.param("id"));
+
+      if (isNaN(id)) {
+        throw new ResponseError(400, "Invalid product ID");
+      }
+
+      const response = await ProductsService.restore(user, { id });
+
+      return c.json({ data: response });
     } catch (error) {
       throw error;
     }
@@ -145,6 +188,9 @@ export class ProductController {
         brand: c.req.query("brand") as Brand,
         manufacturer: c.req.query("manufacturer"),
         category: c.req.query("category") as Category,
+        is_deleted: c.req.query("is_deleted")
+          ? c.req.query("is_deleted") === "true"
+          : undefined,
 
         min_price: c.req.query("min_price")
           ? Number(c.req.query("min_price"))
@@ -164,7 +210,7 @@ export class ProductController {
 
       const response = await ProductsService.search(user, request);
 
-      return c.json(response);
+      return c.json({ data: response });
     } catch (error) {
       throw error;
     }

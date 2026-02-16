@@ -1,4 +1,5 @@
 import {
+  ProductLogAction,
   ServiceStatus,
   UserRole,
   type User,
@@ -33,13 +34,22 @@ export class DashboardService {
     );
 
     const [
-      currentRevenue,
-      lastRevenue,
+      // DATA SERVICE
+      currentServiceRevenue,
+      lastServiceRevenue,
       activeService,
       pendingQueue,
       finishedJobs,
-      monthlyDataRaw,
-      recentLogs,
+
+      monthlyServiceDataRaw,
+      recentServiceLogs,
+
+      // DATA PRODUCT
+      currentProductRevenue,
+      lastProductRevenue,
+      monthlyProductDataRaw,
+      recentProductLogs,
+      productsSoldRaw,
     ] = await Promise.all([
       prismaClient.service.aggregate({
         _sum: { total_price: true },
@@ -103,13 +113,103 @@ export class DashboardService {
           },
         },
       }),
+
+      prismaClient.productLog.aggregate({
+        _sum: {
+          total_revenue: true,
+          total_profit: true,
+        },
+        where: {
+          action: ProductLogAction.SALE_OFFLINE,
+          is_voided: false,
+          created_at: { gte: startOfCurrentMonth },
+        },
+      }),
+
+      prismaClient.productLog.aggregate({
+        _sum: {
+          total_revenue: true,
+          total_profit: true,
+        },
+        where: {
+          action: ProductLogAction.SALE_OFFLINE,
+          is_voided: false,
+          created_at: { gte: startOfLastMonth, lte: endOfLastMonth },
+        },
+      }),
+      prismaClient.productLog.findMany({
+        where: {
+          action: ProductLogAction.SALE_OFFLINE,
+          is_voided: false,
+          created_at: { gte: startOfYear, lte: endOfYear },
+        },
+        select: { created_at: true, total_revenue: true },
+      }),
+
+      prismaClient.productLog.findMany({
+        take: 5,
+        orderBy: { created_at: "desc" },
+        include: {
+          user: { select: { username: true, role: true } },
+          product: { select: { id: true, name: true } },
+        },
+      }),
+      prismaClient.productLog.aggregate({
+        _sum: { quantity_change: true },
+        where: {
+          action: ProductLogAction.SALE_OFFLINE,
+          is_voided: false,
+          created_at: { gte: startOfCurrentMonth },
+        },
+      }),
     ]);
+
+    const currentRevenueTotal =
+      (currentServiceRevenue._sum.total_price || 0) +
+      (currentProductRevenue._sum.total_revenue || 0);
+
+    const lastRevenueTotal =
+      (lastServiceRevenue._sum.total_price || 0) +
+      (lastProductRevenue._sum.total_revenue || 0);
+
+    let revenueGrowth = 0;
+    if (lastRevenueTotal === 0) {
+      revenueGrowth = currentRevenueTotal > 0 ? 100 : 0;
+    } else {
+      revenueGrowth =
+        ((currentRevenueTotal - lastRevenueTotal) / lastRevenueTotal) * 100;
+    }
+
+    const currentProfitTotal =
+      (currentServiceRevenue._sum.total_price || 0) +
+      (currentProductRevenue._sum.total_profit || 0);
+
+    const lastProfitTotal =
+      (lastServiceRevenue._sum.total_price || 0) +
+      (lastProductRevenue._sum.total_profit || 0);
+
+    let profitGrowth = 0;
+    if (lastProfitTotal === 0) {
+      profitGrowth = currentProfitTotal > 0 ? 100 : 0;
+    } else {
+      profitGrowth =
+        ((currentProfitTotal - lastProfitTotal) / lastProfitTotal) * 100;
+    }
+
+    const productsSoldCount = Math.abs(
+      productsSoldRaw._sum.quantity_change || 0,
+    );
 
     const chartMap = new Array(12).fill(0);
 
-    monthlyDataRaw.forEach((item) => {
+    monthlyServiceDataRaw.forEach((item) => {
       const monthIndex = new Date(item.created_at).getMonth();
       chartMap[monthIndex] += item.total_price;
+    });
+
+    monthlyProductDataRaw.forEach((item) => {
+      const monthIndex = new Date(item.created_at).getMonth();
+      chartMap[monthIndex] += item.total_revenue;
     });
 
     const monthNames = [
@@ -131,9 +231,10 @@ export class DashboardService {
       total: chartMap[index],
     }));
 
-    const formattedLogs = recentLogs.map((log) => ({
+    const formattedServiceLogs = recentServiceLogs.map((log) => ({
       id: log.id,
-      user_name: log.user.username,
+      type: "SERVICE" as const,
+      username: log.user.username,
       action: log.action,
       description: log.description,
       time: log.created_at.toISOString(),
@@ -143,25 +244,36 @@ export class DashboardService {
       is_deleted: log.service.deleted_at !== null,
     }));
 
-    const currentTotal = currentRevenue._sum.total_price || 0;
-    const lastTotal = lastRevenue._sum.total_price || 0;
+    const formattedProductLogs = recentProductLogs.map((log) => ({
+      id: log.id,
+      type: "PRODUCT" as const,
+      username: log.user.username,
+      action: log.action,
+      description: log.description,
+      time: log.created_at.toISOString(),
+      product_pk: log.product_id,
+      product_name: log.product.name,
+      is_deleted: false,
+    }));
 
-    let growthPercentage = 0;
-
-    if (lastTotal === 0) {
-      growthPercentage = currentTotal > 0 ? 100 : 0;
-    } else {
-      growthPercentage = ((currentTotal - lastTotal) / lastTotal) * 100;
-    }
+    const combinedRecentLogs = [
+      ...formattedServiceLogs,
+      ...formattedProductLogs,
+    ]
+      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+      .slice(0, 5);
 
     return toDashboardStatsResponse({
-      revenue: currentTotal,
-      revenueGrowth: growthPercentage,
+      revenue: currentRevenueTotal,
+      revenueGrowth: revenueGrowth,
+      profit: currentProfitTotal,
+      profitGrowth: profitGrowth,
       activeCount: activeService,
       pendingCount: pendingQueue,
       finishedCount: finishedJobs,
+      productsSold: productsSoldCount,
       monthlyRevenue: chartData,
-      logs: formattedLogs,
+      logs: combinedRecentLogs,
     });
   }
 }

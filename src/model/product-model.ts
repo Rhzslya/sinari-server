@@ -1,4 +1,9 @@
-import type { Product, Brand, Category } from "../../generated/prisma/client";
+import type {
+  Product,
+  Brand,
+  Category,
+  ProductLogAction,
+} from "../../generated/prisma/client";
 
 export type ProductResponse = {
   id: number;
@@ -47,6 +52,7 @@ export type UpdateProductRequest = {
   stock?: number;
   image?: File;
   delete_image?: boolean;
+  stock_action?: ProductLogAction;
 };
 
 export type SearchProductRequest = {
@@ -57,10 +63,20 @@ export type SearchProductRequest = {
   min_price?: number;
   max_price?: number;
   in_stock_only?: boolean;
+  is_deleted?: boolean;
   page: number;
   size: number;
   sort_by?: "price" | "stock" | "created_at";
   sort_order?: "asc" | "desc";
+};
+
+export type RestoreProductRequest = {
+  id: number;
+  name?: string;
+};
+
+export type DeleteProductRequest = {
+  id: number;
 };
 
 export function toProductResponse(product: Product): ProductResponse {

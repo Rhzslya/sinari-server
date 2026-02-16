@@ -42,7 +42,7 @@ export const authMiddleware = async (
       );
     }
 
-    if (!user.is_active) {
+    if (user.deleted_at !== null) {
       return c.json(
         {
           errors: "Your account has been banned or is inactive.",

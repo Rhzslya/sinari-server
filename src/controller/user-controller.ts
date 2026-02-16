@@ -99,6 +99,9 @@ export class UserController {
       const request: SearchUserRequest = {
         name: c.req.query("name"),
         username: c.req.query("username"),
+        is_deleted: c.req.query("is_deleted")
+          ? c.req.query("is_deleted") === "true"
+          : undefined,
         page: c.req.query("page") ? Number(c.req.query("page")) : 1,
         size: c.req.query("size") ? Number(c.req.query("size")) : 10,
 
@@ -112,7 +115,7 @@ export class UserController {
 
       const response = await UserService.search(user, request);
 
-      return c.json(response);
+      return c.json({ data: response });
     } catch (error) {
       throw error;
     }
@@ -134,7 +137,7 @@ export class UserController {
 
       const response = await UserService.updateRole(user, request);
 
-      return c.json(response);
+      return c.json({ data: response });
     } catch (error) {
       throw error;
     }
@@ -165,8 +168,27 @@ export class UserController {
       await UserService.removeUser(user, id);
 
       return c.json({
+        data: true,
         message: `User With ID ${id} deleted successfully`,
       });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async restore(c: Context) {
+    try {
+      const user = c.var.user as User;
+
+      const id = Number(c.req.param("id"));
+
+      if (isNaN(id)) {
+        throw new ResponseError(400, "Invalid user ID");
+      }
+
+      const response = await UserService.restoreUser(user, { id });
+
+      return c.json({ data: response });
     } catch (error) {
       throw error;
     }

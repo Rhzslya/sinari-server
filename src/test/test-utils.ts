@@ -13,18 +13,18 @@ export class UserTest {
     await prismaClient.user.deleteMany({
       where: {
         username: {
-          contains: "test",
+          contains: "test_",
         },
       },
     });
   }
 
   static async create() {
-    const password = await bcrypt.hash("test", 10);
+    const password = await bcrypt.hash("@Adm1n5123", 10);
     const user = await prismaClient.user.create({
       data: {
-        email: "test@gmail.com",
-        username: "test",
+        email: "test_customer@gmail.com",
+        username: "test_customer",
         password: password,
         name: "test",
         token: "test_token",
@@ -36,7 +36,7 @@ export class UserTest {
     const payload = {
       id: user.id,
       username: user.username,
-      role: "customer",
+      role: UserRole.CUSTOMER,
       name: user.name,
       email: user.email,
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
@@ -57,11 +57,11 @@ export class UserTest {
   }
 
   static async createAdmin(): Promise<string> {
-    const password = await bcrypt.hash("test", 10);
+    const password = await bcrypt.hash("@Adm1n5123", 10);
     const user = await prismaClient.user.create({
       data: {
-        email: "test@gmail.com",
-        username: "test",
+        email: "test_admin@gmail.com",
+        username: "test_admin",
         password: password,
         name: "test",
         token: "test_token",
@@ -94,11 +94,11 @@ export class UserTest {
     return token;
   }
   static async createOwner(): Promise<string> {
-    const password = await bcrypt.hash("test", 10);
+    const password = await bcrypt.hash("@Adm1n5123", 10);
     const user = await prismaClient.user.create({
       data: {
-        email: "test@gmail.com",
-        username: "test",
+        email: "test_owner@gmail.com",
+        username: "test_owner",
         password: password,
         name: "test",
         token: "test_token",
@@ -131,10 +131,49 @@ export class UserTest {
     return token;
   }
 
-  static async get(): Promise<User> {
+  static async getCustomer(): Promise<User> {
     const user = await prismaClient.user.findFirst({
       where: {
-        username: "test",
+        username: "test_customer",
+      },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+    return user;
+  }
+
+  static async getAdmin(): Promise<User> {
+    const user = await prismaClient.user.findFirst({
+      where: {
+        username: "test_admin",
+      },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+    return user;
+  }
+
+  static async getAdminGoogle(): Promise<User> {
+    const user = await prismaClient.user.findFirst({
+      where: {
+        email: "test_admin_google@gmail.com",
+      },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+    return user;
+  }
+
+  static async getOwner(): Promise<User> {
+    const user = await prismaClient.user.findFirst({
+      where: {
+        username: "test_owner",
       },
     });
 
@@ -148,7 +187,7 @@ export class UserTest {
     await prismaClient.user.create({
       data: {
         email: "test123@gmail.com",
-        username: "test",
+        username: "test_google_duplicate",
         name: "test",
         google_id: "123123123",
         token: "test_token",
@@ -157,13 +196,11 @@ export class UserTest {
   }
 
   static async createAdminGoogle(): Promise<string> {
-    const password = await bcrypt.hash("test", 10);
     const user = await prismaClient.user.create({
       data: {
         google_id: "123123123",
-        email: "test@gmail.com",
-        username: "test",
-        password: password,
+        email: "test_admin_google@gmail.com",
+        username: "test_admin_google",
         name: "test",
         token: "test_token",
         is_verified: true,
@@ -195,12 +232,47 @@ export class UserTest {
     return token;
   }
 
+  static async createOwnerGoogle(): Promise<string> {
+    const user = await prismaClient.user.create({
+      data: {
+        google_id: "123123123",
+        email: "test_owner_google@gmail.com",
+        username: "test_owner_google",
+        name: "test",
+        token: "test_token",
+        is_verified: true,
+        verify_token: null,
+        role: UserRole.OWNER,
+      },
+    });
+
+    const payload = {
+      id: user.id,
+      username: user.username,
+      role: UserRole.OWNER,
+      name: user.name,
+      email: user.email,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+    };
+
+    const token = await sign(
+      payload,
+      process.env.JWT_SECRET || "secret",
+      "HS256",
+    );
+
+    await prismaClient.user.update({
+      where: { id: user.id },
+      data: { token: token },
+    });
+
+    return token;
+  }
+
   static async deleteGoogleDuplicate() {
     await prismaClient.user.deleteMany({
       where: {
-        email: {
-          in: ["test123@gmail.com", "test@gmail.com"],
-        },
+        email: {},
       },
     });
   }
@@ -208,7 +280,7 @@ export class UserTest {
   static async unverify() {
     await prismaClient.user.update({
       where: {
-        username: "test",
+        username: "test_customer",
       },
       data: {
         is_verified: false,
@@ -220,10 +292,32 @@ export class UserTest {
   static async ban() {
     await prismaClient.user.update({
       where: {
-        username: "test",
+        username: "test_customer",
       },
       data: {
-        is_active: false,
+        deleted_at: new Date(),
+      },
+    });
+  }
+
+  static async banAdmin() {
+    await prismaClient.user.update({
+      where: {
+        username: "test_admin",
+      },
+      data: {
+        deleted_at: new Date(),
+      },
+    });
+  }
+
+  static async banOwner() {
+    await prismaClient.user.update({
+      where: {
+        username: "test_owner",
+      },
+      data: {
+        deleted_at: new Date(),
       },
     });
   }
@@ -303,11 +397,7 @@ export class ServiceLogTest {
 export class ProductTest {
   static async delete() {
     await prismaClient.product.deleteMany({
-      where: {
-        name: {
-          contains: "test",
-        },
-      },
+      where: {},
     });
   }
 
@@ -321,6 +411,26 @@ export class ProductTest {
         price: 10000,
         cost_price: 8000,
         stock: 10,
+      },
+    });
+  }
+}
+
+export class ProductLogTest {
+  static async delete() {
+    await prismaClient.productLog.deleteMany({
+      where: {},
+    });
+  }
+
+  static async create() {
+    await prismaClient.productLog.create({
+      data: {
+        user_id: 1,
+        action: "CREATED",
+        quantity_change: 0,
+        description: "test",
+        product_id: 1,
       },
     });
   }
@@ -370,6 +480,23 @@ export class TestRequest {
       method: "POST",
       headers: this.makeHeaders(token),
       body: JSON.stringify(body),
+    });
+  }
+
+  static async postMultipart(
+    url: string,
+    formData: FormData,
+    token?: string,
+  ): Promise<Response> {
+    const headers = new Headers();
+    if (token) {
+      headers.append("Authorization", `Bearer ${token}`);
+    }
+
+    return web.request(url, {
+      method: "POST",
+      headers: headers,
+      body: formData,
     });
   }
 

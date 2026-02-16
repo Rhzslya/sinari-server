@@ -1,4 +1,5 @@
 import {
+  ProductLogAction,
   UserRole,
   type Brand,
   type Category,
@@ -15,10 +16,12 @@ import {
   type CreateProductRequest,
   type ProductPublicResponse,
   type ProductResponse,
+  type RestoreProductRequest,
   type SearchProductRequest,
   type UpdateProductRequest,
 } from "../model/product-model";
 import { isValidFile } from "../utils/cloudinary-guard";
+import { fmt } from "../utils/format-rupiah";
 import { ProductValidation } from "../validation/product-validation";
 import { Validation } from "../validation/validation";
 import { CloudinaryService } from "./cloudinary-service";
@@ -53,6 +56,13 @@ export class ProductsService {
       );
     }
 
+    if (createRequest.price < createRequest.cost_price) {
+      throw new ResponseError(
+        400,
+        "Selling price cannot be lower than cost price.",
+      );
+    }
+
     let imageUrl = "";
 
     if (isValidFile(request.image)) {
@@ -74,12 +84,22 @@ export class ProductsService {
       data: {
         name: createRequest.name,
         brand: createRequest.brand,
-        manufacturer: createRequest.manufacturer!.toUpperCase(),
+        manufacturer: (createRequest.manufacturer || "ORIGINAL").toUpperCase(),
         price: createRequest.price,
         cost_price: createRequest.cost_price,
         category: createRequest.category,
-        stock: createRequest.stock,
+        stock: createRequest.stock ?? 0,
         image_url: imageUrl,
+        product_logs: {
+          create: {
+            user_id: user.id,
+            action: ProductLogAction.CREATED,
+            quantity_change: createRequest.stock || 0,
+            description: `Initial product registration. Stock: ${createRequest.stock || 0}, Price: ${fmt(createRequest.price)}, Cost: ${fmt(createRequest.cost_price)}`,
+            total_revenue: 0,
+            total_profit: 0,
+          },
+        },
       },
     });
 
@@ -90,6 +110,7 @@ export class ProductsService {
     const product = await prismaClient.product.findUnique({
       where: {
         id: id,
+        deleted_at: null,
       },
     });
 
@@ -106,11 +127,179 @@ export class ProductsService {
   ): Promise<ProductResponse | ProductPublicResponse> {
     const product = await this.checkProductExist(id);
 
-    if ((user && user.role === UserRole.ADMIN) || UserRole.OWNER) {
+    if (
+      user &&
+      (user.role === UserRole.ADMIN || user.role === UserRole.OWNER)
+    ) {
       return toProductResponse(product);
     }
 
     return toProductPublicResponse(product);
+  }
+
+  static async remove(user: User, id: number): Promise<boolean> {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    const product = await this.checkProductExist(id);
+
+    if (product.image_url) {
+      await CloudinaryService.deleteImage(product.image_url);
+    }
+
+    await prismaClient.product.update({
+      where: {
+        id: id,
+      },
+      data: {
+        deleted_at: new Date(),
+        image_url: null,
+      },
+    });
+
+    await prismaClient.productLog.create({
+      data: {
+        product_id: id,
+        user_id: user.id,
+        action: ProductLogAction.DELETED,
+        quantity_change: 0,
+        description: `Product moved to trash (soft delete)`,
+      },
+    });
+
+    return true;
+  }
+
+  static async restore(
+    user: User,
+    request: RestoreProductRequest,
+  ): Promise<ProductResponse> {
+    if (user.role !== UserRole.OWNER) {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    const restoreRequest = Validation.validate(
+      ProductValidation.RESTORE,
+      request,
+    );
+
+    const productInTrash = await prismaClient.product.findFirst({
+      where: {
+        id: restoreRequest.id,
+        deleted_at: { not: null },
+      },
+    });
+
+    if (!productInTrash) {
+      throw new ResponseError(
+        404,
+        "Product not found in trash bin. It might be active or permanently deleted.",
+      );
+    }
+
+    const [restoredProduct, _log] = await prismaClient.$transaction([
+      prismaClient.product.update({
+        where: { id: restoreRequest.id },
+        data: { deleted_at: null },
+      }),
+
+      prismaClient.productLog.create({
+        data: {
+          product_id: restoreRequest.id,
+          user_id: user.id,
+          action: ProductLogAction.RESTORED,
+          quantity_change: 0,
+          description: "Product restored from trash bin",
+        },
+      }),
+    ]);
+
+    return toProductResponse(restoredProduct);
+  }
+
+  static async search(
+    user: User | null,
+    request: SearchProductRequest,
+  ): Promise<Pageable<ProductResponse | ProductPublicResponse>> {
+    const searchRequest = Validation.validate(
+      ProductValidation.SEARCH,
+      request,
+    );
+
+    const skip = (searchRequest.page - 1) * searchRequest.size;
+
+    const andFilters: Prisma.ProductWhereInput[] = [];
+
+    if (searchRequest.name) {
+      andFilters.push({
+        OR: [
+          { name: { contains: searchRequest.name } },
+          { manufacturer: { contains: searchRequest.name } },
+        ],
+      });
+    }
+
+    if (searchRequest.brand) {
+      andFilters.push({ brand: searchRequest.brand as Brand });
+    }
+
+    if (searchRequest.category) {
+      andFilters.push({ category: searchRequest.category as Category });
+    }
+
+    if (searchRequest.min_price || searchRequest.max_price) {
+      andFilters.push({
+        price: {
+          gte: searchRequest.min_price,
+          lte: searchRequest.max_price,
+        },
+      });
+    }
+
+    if (searchRequest.in_stock_only) {
+      andFilters.push({
+        stock: { gt: 0 },
+      });
+    }
+
+    const whereClause: Prisma.ProductWhereInput = {
+      deleted_at: searchRequest.is_deleted ? { not: null } : null,
+      AND: andFilters,
+    };
+
+    const products = await prismaClient.product.findMany({
+      where: whereClause,
+      take: searchRequest.size,
+      skip: skip,
+      orderBy: {
+        [searchRequest.sort_by || "created_at"]:
+          searchRequest.sort_order || "desc",
+      },
+    });
+
+    const totalItems = await prismaClient.product.count({
+      where: whereClause,
+    });
+
+    const isNotCustomer = user && user.role !== UserRole.CUSTOMER;
+
+    const data = products.map((product) => {
+      if (isNotCustomer) {
+        return toProductResponse(product);
+      } else {
+        return toProductPublicResponse(product);
+      }
+    });
+
+    return {
+      data: data,
+      paging: {
+        size: searchRequest.size,
+        current_page: searchRequest.page,
+        total_page: Math.ceil(totalItems / searchRequest.size),
+      },
+    };
   }
 
   static async update(
@@ -127,6 +316,16 @@ export class ProductsService {
     );
 
     const oldProduct = await this.checkProductExist(updateRequest.id);
+
+    const finalPrice = updateRequest.price ?? oldProduct.price;
+    const finalCost = updateRequest.cost_price ?? oldProduct.cost_price;
+
+    if (finalCost > finalPrice) {
+      throw new ResponseError(
+        400,
+        "Cannot update: Cost price cannot exceed selling price.",
+      );
+    }
 
     if (
       updateRequest.name ||
@@ -181,6 +380,7 @@ export class ProductsService {
         fileName,
       );
     }
+    const audit = this.generatedAuditLogs(oldProduct, updateRequest);
 
     const product = await prismaClient.product.update({
       where: {
@@ -193,114 +393,213 @@ export class ProductsService {
         category: updateRequest.category,
         price: updateRequest.price,
         cost_price: updateRequest.cost_price,
-        stock: updateRequest.stock,
         image_url: imageUrl,
+
+        product_logs: {
+          create: {
+            user_id: user.id,
+            action: audit.mainAction,
+            quantity_change: 0,
+            description: audit.description,
+            total_revenue: audit.total_revenue,
+            total_profit: audit.total_profit,
+          },
+        },
       },
     });
 
     return toProductResponse(product);
   }
 
-  static async remove(user: User, id: number): Promise<boolean> {
+  static async updateStock(
+    user: User,
+    request: Pick<UpdateProductRequest, "id" | "stock" | "stock_action">,
+  ): Promise<ProductResponse> {
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const product = await this.checkProductExist(id);
-
-    if (product.image_url) {
-      await CloudinaryService.deleteImage(product.image_url);
-    }
-
-    await prismaClient.product.delete({
-      where: {
-        id: id,
-      },
-    });
-
-    return true;
-  }
-
-  static async search(
-    user: User | null,
-    request: SearchProductRequest,
-  ): Promise<Pageable<ProductResponse | ProductPublicResponse>> {
-    const searchRequest = Validation.validate(
-      ProductValidation.SEARCH,
+    const updateRequest = Validation.validate(
+      ProductValidation.UPDATE_STOCK,
       request,
     );
 
-    const skip = (searchRequest.page - 1) * searchRequest.size;
+    const newStock = updateRequest.stock as number;
+    const action = updateRequest.stock_action as ProductLogAction;
 
-    const andFilters: Prisma.ProductWhereInput[] = [];
+    const oldProduct = await this.checkProductExist(updateRequest.id);
 
-    if (searchRequest.name) {
-      andFilters.push({
-        OR: [
-          { name: { contains: searchRequest.name } },
-          { manufacturer: { contains: searchRequest.name } },
-        ],
-      });
+    const quantityChange = newStock - oldProduct.stock;
+
+    if (quantityChange === 0) {
+      throw new ResponseError(
+        400,
+        "Stock value is exactly the same as current stock.",
+      );
     }
 
-    if (searchRequest.brand) {
-      andFilters.push({ brand: searchRequest.brand as Brand });
+    let total_revenue = 0;
+    let total_profit = 0;
+
+    if (quantityChange > 0) {
+      const validPositiveActions: ProductLogAction[] = [
+        ProductLogAction.RESTOCK,
+        ProductLogAction.ADJUST_OPNAME,
+      ];
+      if (!validPositiveActions.includes(action)) {
+        throw new ResponseError(
+          400,
+          `Action '${action}' is not allowed when stock increases.`,
+        );
+      }
+    } else if (quantityChange < 0) {
+      const validNegativeActions: ProductLogAction[] = [
+        ProductLogAction.SALE_OFFLINE,
+        ProductLogAction.ADJUST_DAMAGE,
+        ProductLogAction.ADJUST_LOST,
+        ProductLogAction.ADJUST_OPNAME,
+      ];
+      if (!validNegativeActions.includes(action)) {
+        throw new ResponseError(
+          400,
+          `Action '${action}' is not allowed when stock decreases.`,
+        );
+      }
+
+      if (action === ProductLogAction.SALE_OFFLINE) {
+        const qtySold = Math.abs(quantityChange);
+        total_revenue = oldProduct.price * qtySold;
+        total_profit = (oldProduct.price - oldProduct.cost_price) * qtySold;
+      }
     }
 
-    if (searchRequest.category) {
-      andFilters.push({ category: searchRequest.category as Category });
-    }
+    const description = `Stock adjusted: ${oldProduct.stock} -> ${updateRequest.stock}. Reason: ${action}`;
 
-    if (searchRequest.min_price || searchRequest.max_price) {
-      andFilters.push({
-        price: {
-          gte: searchRequest.min_price,
-          lte: searchRequest.max_price,
+    const product = await prismaClient.product.update({
+      where: { id: request.id },
+      data: {
+        stock: updateRequest.stock,
+        product_logs: {
+          create: {
+            user_id: user.id,
+            action: action,
+            quantity_change: quantityChange,
+            description: description,
+            total_revenue: total_revenue,
+            total_profit: total_profit,
+          },
         },
-      });
-    }
-
-    if (searchRequest.in_stock_only) {
-      andFilters.push({
-        stock: { gt: 0 },
-      });
-    }
-
-    const whereClause: Prisma.ProductWhereInput = {
-      AND: andFilters,
-    };
-
-    const products = await prismaClient.product.findMany({
-      where: whereClause,
-      take: searchRequest.size,
-      skip: skip,
-      orderBy: {
-        [searchRequest.sort_by || "created_at"]:
-          searchRequest.sort_order || "desc",
       },
     });
 
-    const totalItems = await prismaClient.product.count({
-      where: whereClause,
-    });
+    return toProductResponse(product);
+  }
 
-    const isNotCustomer = user && user.role !== UserRole.CUSTOMER;
+  private static generatedAuditLogs(
+    oldProduct: Product,
+    req: UpdateProductRequest,
+  ) {
+    const logMessages: string[] = [];
 
-    const data = products.map((product) => {
-      if (isNotCustomer) {
-        return toProductResponse(product);
-      } else {
-        return toProductPublicResponse(product);
+    let mainAction: ProductLogAction = ProductLogAction.UPDATE_INFO;
+    let quantityChange = 0;
+
+    let total_revenue = 0;
+    let total_profit = 0;
+
+    let isMetadataChanged = false;
+    if (req.name && req.name !== oldProduct.name) {
+      logMessages.push(`Name changed from "${oldProduct.name}"`);
+      isMetadataChanged = true;
+    }
+    if (req.brand && req.brand !== oldProduct.brand) isMetadataChanged = true;
+    if (req.category && req.category !== oldProduct.category)
+      isMetadataChanged = true;
+    if (req.manufacturer && req.manufacturer !== oldProduct.manufacturer)
+      isMetadataChanged = true;
+
+    if (isMetadataChanged) {
+      logMessages.push(`Catalog details updated`);
+      mainAction = ProductLogAction.UPDATE_INFO;
+    }
+
+    if (req.image) {
+      logMessages.push(`Image updated`);
+      mainAction = ProductLogAction.UPDATE_INFO;
+    }
+
+    if (
+      req.cost_price !== undefined &&
+      req.cost_price !== oldProduct.cost_price
+    ) {
+      logMessages.push(
+        `Cost: ${fmt(oldProduct.cost_price)} -> ${fmt(req.cost_price)}`,
+      );
+      mainAction = ProductLogAction.UPDATE_COST;
+    }
+    if (req.price !== undefined && req.price !== oldProduct.price) {
+      logMessages.push(`Price: ${fmt(oldProduct.price)} -> ${fmt(req.price)}`);
+      mainAction = ProductLogAction.UPDATE_PRICE;
+    }
+
+    if (req.stock !== undefined && req.stock !== oldProduct.stock) {
+      quantityChange = req.stock - oldProduct.stock;
+      logMessages.push(`Stock: ${oldProduct.stock} -> ${req.stock}`);
+
+      const isSaleOffline = req.stock_action === ProductLogAction.SALE_OFFLINE;
+
+      if (isSaleOffline) {
+        const qtySold = Math.abs(quantityChange);
+        total_revenue = oldProduct.price * qtySold;
+        total_profit = (oldProduct.price - oldProduct.cost_price) * qtySold;
       }
-    });
+
+      if (req.stock_action) {
+        if (quantityChange > 0) {
+          const validPositiveActions: ProductLogAction[] = [
+            ProductLogAction.RESTOCK,
+            ProductLogAction.ADJUST_OPNAME,
+          ];
+          if (!validPositiveActions.includes(req.stock_action)) {
+            throw new ResponseError(
+              400,
+              `Validation Error: Action '${req.stock_action}' is not allowed when stock increases. Use RESTOCK or ADJUST_OPNAME.`,
+            );
+          }
+        } else if (quantityChange < 0) {
+          const validNegativeActions: ProductLogAction[] = [
+            ProductLogAction.SALE_OFFLINE,
+            ProductLogAction.ADJUST_DAMAGE,
+            ProductLogAction.ADJUST_LOST,
+            ProductLogAction.ADJUST_OPNAME,
+          ];
+          if (!validNegativeActions.includes(req.stock_action)) {
+            throw new ResponseError(
+              400,
+              `Validation Error: Action '${req.stock_action}' is not allowed when stock decreases.`,
+            );
+          }
+        }
+
+        mainAction = req.stock_action;
+      } else {
+        mainAction = ProductLogAction.ADJUST_OPNAME;
+      }
+
+      logMessages.push(`Reason: ${mainAction}`);
+    }
+
+    const description =
+      logMessages.length > 0
+        ? logMessages.join(" | ")
+        : "Product updated without specific changes";
 
     return {
-      data: data,
-      paging: {
-        size: searchRequest.size,
-        current_page: searchRequest.page,
-        total_page: Math.ceil(totalItems / searchRequest.size),
-      },
+      description,
+      mainAction,
+      quantityChange,
+      total_revenue,
+      total_profit,
     };
   }
 }

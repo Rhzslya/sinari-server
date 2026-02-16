@@ -9,6 +9,7 @@ import { TechnicianController } from "../controller/technician-controller";
 import { ownerMiddleware } from "../middleware/owner-middleware";
 import { ServiceLogController } from "../controller/repair-logs-controller";
 import { DashboardController } from "../controller/dashboard-controller";
+import { ProductLogController } from "../controller/product-logs-controller";
 
 export const apiRouter = new Hono<{ Variables: ApplicationVariables }>();
 
@@ -30,11 +31,22 @@ apiRouter.delete("/api/users/:id", adminMiddleware, UserController.removeUser);
 apiRouter.get("/api/services", adminMiddleware, ServiceController.search);
 apiRouter.post("/api/services", adminMiddleware, ServiceController.create);
 
+apiRouter.patch(
+  "/api/users/:id/restore",
+  ownerMiddleware,
+  UserController.restore,
+);
+
 // Route Service Logs
 apiRouter.get(
   "/api/services/:id/logs",
   ownerMiddleware,
   ServiceLogController.get,
+);
+apiRouter.get(
+  "/api/products/:id/logs",
+  ownerMiddleware,
+  ProductLogController.get,
 );
 
 // RESTORE
@@ -56,11 +68,27 @@ apiRouter.delete(
 // ================= PRODUCT API =================
 apiRouter.use("/api/products/*", adminMiddleware);
 apiRouter.get("/api/products", adminMiddleware, ProductController.search);
-
 apiRouter.post("/api/products", ProductController.create);
-apiRouter.get("/api/products/:id", ProductController.get);
 apiRouter.patch("/api/products/:id", ProductController.update);
-apiRouter.delete("/api/products/:id", ProductController.remove);
+apiRouter.patch("/api/products/:id/stock", ProductController.updateStock);
+
+apiRouter.get("/api/products/:id", adminMiddleware, ProductController.get);
+apiRouter.delete(
+  "/api/products/:id",
+  adminMiddleware,
+  ProductController.remove,
+);
+apiRouter.patch(
+  "/api/product-logs/:id/void",
+  ownerMiddleware,
+  ProductLogController.voidLog,
+);
+
+apiRouter.patch(
+  "/api/products/:id/restore",
+  ownerMiddleware,
+  ProductController.restore,
+);
 
 // ================= TECHNICIAN API =================
 apiRouter.post(
@@ -85,6 +113,12 @@ apiRouter.delete(
   "/api/technicians/:id",
   adminMiddleware,
   TechnicianController.remove,
+);
+
+apiRouter.patch(
+  "/api/technicians/:id/restore",
+  ownerMiddleware,
+  TechnicianController.restore,
 );
 
 // ================= DASHBOARD API =================

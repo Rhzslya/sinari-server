@@ -38,14 +38,13 @@ export class CloudinaryService {
           overwrite: true,
 
           transformation: [
-            { effect: "background_removal" },
-
             {
               width: 1000,
               height: 1000,
               crop: "pad",
               background: "white",
             },
+            { effect: "background_removal" },
             {
               quality: "auto:best",
               fetch_format: "webp",

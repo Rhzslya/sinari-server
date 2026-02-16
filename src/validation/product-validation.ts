@@ -1,5 +1,9 @@
 import z from "zod";
-import { Brand, Category } from "../../generated/prisma/enums";
+import {
+  Brand,
+  Category,
+  ProductLogAction,
+} from "../../generated/prisma/enums";
 import { ACCEPTED_IMAGE_TYPES, MAX_FILE_SIZE } from "../type/cloudinary-type";
 
 const BRAND_VALUES = Object.values(Brand) as [string, ...string[]];
@@ -39,6 +43,13 @@ export class ProductValidation {
       (val) => val === "true" || val === true,
       z.boolean().optional(),
     ),
+    stock_action: z.enum(ProductLogAction).optional(),
+  });
+
+  static readonly UPDATE_STOCK = z.object({
+    id: z.number().positive(),
+    stock: z.coerce.number().min(0),
+    stock_action: z.enum(ProductLogAction).optional(),
   });
 
   static readonly SEARCH = z.object({
@@ -49,9 +60,17 @@ export class ProductValidation {
     min_price: z.coerce.number().min(0).optional(),
     max_price: z.coerce.number().min(0).optional(),
     in_stock_only: z.coerce.boolean().optional(),
+    is_deleted: z.preprocess((val) => {
+      if (typeof val === "string") return val === "true";
+      return Boolean(val);
+    }, z.boolean().optional()),
     page: z.coerce.number().min(1).default(1),
     size: z.coerce.number().min(1).max(100).default(10),
     sort_by: z.enum(["price", "stock", "created_at"]).optional(),
     sort_order: z.enum(["asc", "desc"]).optional(),
+  });
+
+  static readonly RESTORE = z.object({
+    id: z.coerce.number().min(1).positive(),
   });
 }

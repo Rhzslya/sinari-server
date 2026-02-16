@@ -10,6 +10,19 @@ export type TechnicianResponse = {
 export type ListTechnicianResponse = {
   id: number;
   name: string;
+  active_jobs: number;
+};
+
+type TechnicianWithCount = {
+  id: number;
+  name: string;
+  _count: {
+    services: number;
+  };
+};
+
+export type RestoreTechnicianRequest = {
+  id: number;
 };
 
 export type CreateTechnicianRequest = {
@@ -27,8 +40,10 @@ export type UpdateTechnicianRequest = {
 };
 
 export type SearchTechnicianRequest = {
+  id?: number;
   name?: string;
   is_active?: boolean;
+  is_deleted?: boolean;
   page: number;
   size: number;
   sort_by?: "created_at" | "is_active" | "name";
@@ -49,10 +64,11 @@ export function toTechnicianResponse(
 }
 
 export function toListTechnicianResponse(
-  technician: ListTechnicianResponse,
+  technician: TechnicianWithCount,
 ): ListTechnicianResponse {
   return {
     id: technician.id,
     name: technician.name,
+    active_jobs: technician._count.services,
   };
 }

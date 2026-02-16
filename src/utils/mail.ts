@@ -101,4 +101,35 @@ export class Mail {
 
     console.log("Preview URL: %s", previewUrl);
   }
+
+  static async sendRestoredUser(email: string, name: string) {
+    const testAccount = await nodemailer.createTestAccount();
+
+    const transporterTest = nodemailer.createTransport({
+      host: testAccount.smtp.host,
+      port: testAccount.smtp.port,
+      secure: testAccount.smtp.secure,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+
+    const info = await transporterTest.sendMail({
+      from: `"Sinari Cell Admin" <${testAccount.user}>`,
+      to: email,
+      subject: "Account Restored",
+      html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px dashed red;">
+                <h3 style="color: red;">[THIS IS EMAIL TESTING]</h3>
+                <h2>Halo, ${name}!</h2>
+                <p>Halo, Akun anda telah dikembalikan, sekarang anda dapat masuk ke akun anda.</p>
+            </div>
+        `,
+    });
+
+    console.log("Message sent: %s", info.messageId);
+
+    console.log("Email sent to %s. MessageId: %s", email, info.messageId);
+  }
 }

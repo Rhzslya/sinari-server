@@ -13,10 +13,6 @@ import { prismaClient } from "../application/database";
 import { ResponseError } from "../error/response-error";
 import type { Pageable } from "../model/page-model";
 import {
-  toServiceLogResponse,
-  type ServiceLogResponse,
-} from "../model/repair-logs-model";
-import {
   toPublicServiceResponse,
   toServiceResponse,
   type CreateServiceRequest,
@@ -26,6 +22,7 @@ import {
   type ServiceResponse,
   type UpdateServiceRequest,
 } from "../model/repair-model";
+import { CheckExist } from "../utils/check-exist";
 import { formatPhoneNumber } from "../utils/format-phone-number";
 import { fmt } from "../utils/format-rupiah";
 import { generateServiceId } from "../utils/id-generator";
@@ -138,62 +135,14 @@ export class ServicesDataService {
     return toServiceResponse(service);
   }
 
-  static async checkServiceExists(
-    id: number,
-  ): Promise<
-    Service & { service_list: ServiceItem[]; technician: Technician }
-  > {
-    const service = await prismaClient.service.findUnique({
-      where: {
-        id: id,
-        deleted_at: null,
-      },
-      include: {
-        service_list: true,
-        technician: true,
-      },
-    });
-
-    if (!service) {
-      throw new ResponseError(404, "Service not found");
-    }
-
-    return service;
-  }
-
   static async get(user: User, id: number): Promise<ServiceResponse> {
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const service = await this.checkServiceExists(id);
+    const service = await CheckExist.checkServiceExists(id);
 
     return toServiceResponse(service);
-  }
-
-  static async getLogs(
-    user: User,
-    serviceId: number,
-  ): Promise<ServiceLogResponse[]> {
-    if (user.role !== UserRole.OWNER) {
-      throw new ResponseError(403, "Forbidden: Insufficient permissions");
-    }
-
-    await this.checkServiceExists(serviceId);
-
-    const logs = await prismaClient.serviceLog.findMany({
-      where: {
-        service_id: serviceId,
-      },
-      include: {
-        user: true,
-      },
-      orderBy: {
-        created_at: "desc",
-      },
-    });
-
-    return logs.map(toServiceLogResponse);
   }
 
   static async remove(user: User, id: number): Promise<boolean> {
@@ -201,7 +150,7 @@ export class ServicesDataService {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const service = await this.checkServiceExists(id);
+    const service = await CheckExist.checkServiceExists(id);
 
     const allowedStatusToDelete: ServiceStatus[] = [
       ServiceStatus.CANCELLED,
@@ -415,7 +364,7 @@ export class ServicesDataService {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
     const updateRequest = Validation.validate(RepairValidation.UPDATE, request);
-    const oldService = await this.checkServiceExists(updateRequest.id);
+    const oldService = await CheckExist.checkServiceExists(updateRequest.id);
 
     if (oldService.deleted_at !== null) {
       throw new ResponseError(

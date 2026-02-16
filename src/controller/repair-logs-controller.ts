@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import type { User } from "../../generated/prisma/client";
 import { ResponseError } from "../error/response-error";
-import { ServicesDataService } from "../service/repair-service";
+import { RepairLogService } from "../service/repair-logs-service";
 
 export class ServiceLogController {
   static async get(c: Context) {
@@ -11,10 +11,10 @@ export class ServiceLogController {
       const id = Number(c.req.param("id"));
 
       if (isNaN(id)) {
-        throw new ResponseError(400, "Invalid service ID");
+        throw new ResponseError(400, "Invalid service log ID");
       }
 
-      const response = await ServicesDataService.getLogs(user, id);
+      const response = await RepairLogService.getLogs(user, id);
 
       return c.json({
         data: response,

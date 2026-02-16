@@ -43,6 +43,7 @@ export class TechnicianValidation {
   });
 
   static readonly SEARCH = z.object({
+    id: z.number().positive().optional(),
     name: z.string().min(1).max(100).optional(),
     page: z.coerce.number().min(1).positive().default(1),
     size: z.coerce.number().min(1).max(100).positive().default(10),
@@ -52,7 +53,15 @@ export class TechnicianValidation {
         return Boolean(val);
       }, z.boolean().default(true))
       .optional(),
+    is_deleted: z.preprocess((val) => {
+      if (typeof val === "string") return val === "true";
+      return Boolean(val);
+    }, z.boolean().optional()),
     sort_by: z.enum(["created_at", "is_active", "name"]).optional(),
     sort_order: z.enum(["asc", "desc"]).optional(),
+  });
+
+  static readonly RESTORE = z.object({
+    id: z.number().min(1).positive(),
   });
 }

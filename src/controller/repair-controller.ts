@@ -64,7 +64,7 @@ export class ServiceController {
 
       const response = await ServicesDataService.update(user, request);
 
-      return c.json(response);
+      return c.json({ data: response });
     } catch (error) {
       throw error;
     }
@@ -82,7 +82,10 @@ export class ServiceController {
 
       await ServicesDataService.remove(user, id);
 
-      return c.json({ message: `Service With ID ${id} deleted successfully` });
+      return c.json({
+        data: true,
+        message: `Service With ID ${id} deleted successfully`,
+      });
     } catch (error) {
       throw error;
     }
@@ -100,7 +103,7 @@ export class ServiceController {
 
       const response = await ServicesDataService.restore(user, { id });
 
-      return c.json(response);
+      return c.json({ data: response });
     } catch (error) {
       throw error;
     }
@@ -143,7 +146,7 @@ export class ServiceController {
 
       const response = await ServicesDataService.search(user, request);
 
-      return c.json(response);
+      return c.json({ data: response });
     } catch (error) {
       throw error;
     }

@@ -97,8 +97,27 @@ export class TechnicianController {
       await TechnicianService.remove(user, id);
 
       return c.json({
+        data: true,
         message: `Technician With ID ${id} deleted successfully`,
       });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async restore(c: Context) {
+    try {
+      const user = c.var.user as User;
+
+      const id = Number(c.req.param("id"));
+
+      if (isNaN(id)) {
+        throw new ResponseError(400, "Invalid technician ID");
+      }
+
+      const response = await TechnicianService.restore(user, { id });
+
+      return c.json({ data: response });
     } catch (error) {
       throw error;
     }
@@ -122,6 +141,9 @@ export class TechnicianController {
         name: c.req.query("name"),
         page: c.req.query("page") ? Number(c.req.query("page")) : 1,
         size: c.req.query("size") ? Number(c.req.query("size")) : 10,
+        is_deleted: c.req.query("is_deleted")
+          ? c.req.query("is_deleted") === "true"
+          : undefined,
 
         is_active: isActiveBoolean,
 
@@ -131,7 +153,7 @@ export class TechnicianController {
 
       const response = await TechnicianService.search(user, request);
 
-      return c.json(response);
+      return c.json({ data: response });
     } catch (error) {
       throw error;
     }
@@ -141,10 +163,10 @@ export class TechnicianController {
     try {
       const user = c.var.user as User;
 
-      const result = await TechnicianService.listActive(user);
+      const response = await TechnicianService.listActive(user);
 
       return c.json({
-        data: result,
+        data: response,
       });
     } catch (error) {
       throw error;

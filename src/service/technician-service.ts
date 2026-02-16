@@ -12,6 +12,7 @@ import {
   toTechnicianResponse,
   type CreateTechnicianRequest,
   type ListTechnicianResponse,
+  type RestoreTechnicianRequest,
   type SearchTechnicianRequest,
   type TechnicianResponse,
   type UpdateTechnicianRequest,
@@ -97,11 +98,21 @@ export class TechnicianService {
       select: {
         id: true,
         name: true,
-      },
-      orderBy: {
-        name: "asc",
+        _count: {
+          select: {
+            services: {
+              where: {
+                status: {
+                  in: [ServiceStatus.PENDING, ServiceStatus.PROCESS],
+                },
+              },
+            },
+          },
+        },
       },
     });
+
+    technicians.sort((a, b) => a._count.services - b._count.services);
 
     return technicians.map((tech) => toListTechnicianResponse(tech));
   }
@@ -199,7 +210,7 @@ export class TechnicianService {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    await this.checkTechnicianExist(id);
+    const technician = await this.checkTechnicianExist(id);
 
     const activeOngoingServices = await prismaClient.service.count({
       where: {
@@ -222,6 +233,10 @@ export class TechnicianService {
       );
     }
 
+    if (technician.signature_url) {
+      await CloudinaryService.deleteImage(technician.signature_url);
+    }
+
     await prismaClient.technician.update({
       where: { id: id },
       data: {
@@ -231,6 +246,41 @@ export class TechnicianService {
     });
 
     return true;
+  }
+
+  static async restore(
+    user: User,
+    request: RestoreTechnicianRequest,
+  ): Promise<TechnicianResponse> {
+    if (user.role !== UserRole.OWNER) {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    const restoreRequest = Validation.validate(
+      TechnicianValidation.RESTORE,
+      request,
+    );
+
+    const technicianInTrash = await prismaClient.technician.findFirst({
+      where: {
+        id: restoreRequest.id,
+        deleted_at: { not: null },
+      },
+    });
+
+    if (!technicianInTrash) {
+      throw new ResponseError(
+        404,
+        "Technician not found in trash bin. It might be active or permanently deleted.",
+      );
+    }
+
+    const restoredTechnician = await prismaClient.technician.update({
+      where: { id: restoreRequest.id },
+      data: { deleted_at: null },
+    });
+
+    return toTechnicianResponse(restoredTechnician);
   }
 
   static async search(
@@ -251,8 +301,18 @@ export class TechnicianService {
     const andFilters: Prisma.TechnicianWhereInput[] = [];
 
     if (searchRequest.name) {
+      const orConditions: Prisma.TechnicianWhereInput[] = [
+        { name: { contains: searchRequest.name } },
+      ];
+
+      const parsedId = Number(searchRequest.name);
+
+      if (!isNaN(parsedId)) {
+        orConditions.push({ id: parsedId });
+      }
+
       andFilters.push({
-        OR: [{ name: { contains: searchRequest.name } }],
+        OR: orConditions,
       });
     }
 
@@ -263,7 +323,7 @@ export class TechnicianService {
     }
 
     const whereClause: Prisma.TechnicianWhereInput = {
-      deleted_at: null,
+      deleted_at: searchRequest.is_deleted ? { not: null } : null,
       AND: andFilters,
     };
 

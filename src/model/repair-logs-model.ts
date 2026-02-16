@@ -2,6 +2,7 @@ import type {
   ServiceLog,
   ServiceLogAction,
   User,
+  UserRole,
 } from "../../generated/prisma/client";
 
 export type ServiceLogResponse = {
@@ -12,7 +13,7 @@ export type ServiceLogResponse = {
   created_at: Date;
   user: {
     username: string;
-    role: string;
+    role: UserRole;
   };
 };
 

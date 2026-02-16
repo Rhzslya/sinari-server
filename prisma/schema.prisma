@@ -50,7 +50,8 @@ model User {
   service_logs ServiceLog[]
   product_logs ProductLog[]
 
-  is_active Boolean @default(true)
+  deleted_at DateTime?
+
 
   @@map("users")
 }
@@ -169,6 +170,9 @@ model Product {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  deleted_at DateTime?
+
+
   product_logs ProductLog[]
 
   @@map("products")
@@ -181,6 +185,11 @@ model ProductLog{
   action     ProductLogAction
   quantity_change Int
   description String
+  total_revenue   Int      @default(0) 
+  total_profit    Int      @default(0)
+  is_voided       Boolean  @default(false)
+
+
   created_at DateTime @default(now())
 
   product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
@@ -191,12 +200,17 @@ model ProductLog{
 
 enum ProductLogAction {
   CREATED          
-  UPDATED           
+  UPDATE_INFO
+  UPDATE_COST
+  UPDATE_PRICE
   RESTOCK           
   SALE_OFFLINE      
   ADJUST_DAMAGE     
   ADJUST_LOST      
-  ADJUST_OPNAME     
+  ADJUST_OPNAME
+  VOID_LOG
+  DELETED
+  RESTORED     
 }
 
 enum Brand {
