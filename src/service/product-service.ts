@@ -13,7 +13,10 @@ import type { Pageable } from "../model/page-model";
 import {
   toProductPublicResponse,
   toProductResponse,
+  type CheckProductExistRequest,
   type CreateProductRequest,
+  type DeleteProductRequest,
+  type GetDetailedProductRequest,
   type ProductPublicResponse,
   type ProductResponse,
   type RestoreProductRequest,
@@ -106,10 +109,12 @@ export class ProductsService {
     return toProductResponse(product);
   }
 
-  static async checkProductExist(id: number): Promise<Product> {
+  static async checkProductExist(
+    request: CheckProductExistRequest,
+  ): Promise<Product> {
     const product = await prismaClient.product.findUnique({
       where: {
-        id: id,
+        id: request.id,
         deleted_at: null,
       },
     });
@@ -123,10 +128,9 @@ export class ProductsService {
 
   static async get(
     user: User | null,
-    id: number,
+    request: GetDetailedProductRequest,
   ): Promise<ProductResponse | ProductPublicResponse> {
-    const product = await this.checkProductExist(id);
-
+    const product = await this.checkProductExist({ id: request.id });
     if (
       user &&
       (user.role === UserRole.ADMIN || user.role === UserRole.OWNER)
@@ -137,12 +141,15 @@ export class ProductsService {
     return toProductPublicResponse(product);
   }
 
-  static async remove(user: User, id: number): Promise<boolean> {
+  static async remove(
+    user: User,
+    request: DeleteProductRequest,
+  ): Promise<boolean> {
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const product = await this.checkProductExist(id);
+    const product = await this.checkProductExist({ id: request.id });
 
     if (product.image_url) {
       await CloudinaryService.deleteImage(product.image_url);
@@ -150,7 +157,7 @@ export class ProductsService {
 
     await prismaClient.product.update({
       where: {
-        id: id,
+        id: request.id,
       },
       data: {
         deleted_at: new Date(),
@@ -160,7 +167,7 @@ export class ProductsService {
 
     await prismaClient.productLog.create({
       data: {
-        product_id: id,
+        product_id: request.id,
         user_id: user.id,
         action: ProductLogAction.DELETED,
         quantity_change: 0,
@@ -315,7 +322,7 @@ export class ProductsService {
       request,
     );
 
-    const oldProduct = await this.checkProductExist(updateRequest.id);
+    const oldProduct = await this.checkProductExist({ id: updateRequest.id });
 
     const finalPrice = updateRequest.price ?? oldProduct.price;
     const finalCost = updateRequest.cost_price ?? oldProduct.cost_price;
@@ -427,7 +434,7 @@ export class ProductsService {
     const newStock = updateRequest.stock as number;
     const action = updateRequest.stock_action as ProductLogAction;
 
-    const oldProduct = await this.checkProductExist(updateRequest.id);
+    const oldProduct = await this.checkProductExist({ id: updateRequest.id });
 
     const quantityChange = newStock - oldProduct.stock;
 

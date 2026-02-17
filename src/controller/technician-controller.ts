@@ -76,7 +76,7 @@ export class TechnicianController {
         throw new ResponseError(400, "Invalid technician ID");
       }
 
-      const response = await TechnicianService.get(user, id);
+      const response = await TechnicianService.get(user, { id });
 
       return c.json({ data: response });
     } catch (error) {
@@ -94,7 +94,7 @@ export class TechnicianController {
         throw new ResponseError(400, "Invalid technician ID");
       }
 
-      await TechnicianService.remove(user, id);
+      await TechnicianService.remove(user, { id });
 
       return c.json({
         data: true,

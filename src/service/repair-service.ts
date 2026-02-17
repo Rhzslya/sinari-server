@@ -16,10 +16,13 @@ import {
   toPublicServiceResponse,
   toServiceResponse,
   type CreateServiceRequest,
+  type DeleteServiceRequest,
+  type DetailedServiceRequest,
   type PublicServiceResponse,
   type RestoreServiceRequest,
   type SearchServiceRequest,
   type ServiceResponse,
+  type TrackPublicServiceRequest,
   type UpdateServiceRequest,
 } from "../model/repair-model";
 import { CheckExist } from "../utils/check-exist";
@@ -135,22 +138,28 @@ export class ServicesDataService {
     return toServiceResponse(service);
   }
 
-  static async get(user: User, id: number): Promise<ServiceResponse> {
+  static async get(
+    user: User,
+    request: DetailedServiceRequest,
+  ): Promise<ServiceResponse> {
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const service = await CheckExist.checkServiceExists(id);
+    const service = await CheckExist.checkServiceExists({ id: request.id });
 
     return toServiceResponse(service);
   }
 
-  static async remove(user: User, id: number): Promise<boolean> {
+  static async remove(
+    user: User,
+    request: DeleteServiceRequest,
+  ): Promise<boolean> {
     if (user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const service = await CheckExist.checkServiceExists(id);
+    const service = await CheckExist.checkServiceExists({ id: request.id });
 
     const allowedStatusToDelete: ServiceStatus[] = [
       ServiceStatus.CANCELLED,
@@ -165,7 +174,7 @@ export class ServicesDataService {
     }
 
     await prismaClient.service.update({
-      where: { id: id },
+      where: { id: request.id },
       data: {
         deleted_at: new Date(),
       },
@@ -173,7 +182,7 @@ export class ServicesDataService {
 
     await prismaClient.serviceLog.create({
       data: {
-        service_id: id,
+        service_id: request.id,
         user_id: user.id,
         action: ServiceLogAction.DELETED,
         description: "Service ticket moved to trash (soft delete)",
@@ -331,10 +340,15 @@ export class ServicesDataService {
     };
   }
 
-  static async trackPublic(identifier: string): Promise<PublicServiceResponse> {
+  static async trackPublic(
+    request: TrackPublicServiceRequest,
+  ): Promise<PublicServiceResponse> {
     const service = await prismaClient.service.findFirst({
       where: {
-        OR: [{ tracking_token: identifier }, { service_id: identifier }],
+        OR: [
+          { tracking_token: request.identifier },
+          { service_id: request.identifier },
+        ],
         deleted_at: null,
       },
       include: {
@@ -364,7 +378,9 @@ export class ServicesDataService {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
     const updateRequest = Validation.validate(RepairValidation.UPDATE, request);
-    const oldService = await CheckExist.checkServiceExists(updateRequest.id);
+    const oldService = await CheckExist.checkServiceExists({
+      id: updateRequest.id,
+    });
 
     if (oldService.deleted_at !== null) {
       throw new ResponseError(
@@ -373,7 +389,6 @@ export class ServicesDataService {
       );
     }
 
-    // Business Logic Checks (Locking & Transitions)
     const allowRollback = this.checkGracePeriod(oldService);
 
     this.validateLockingRules(
@@ -649,13 +664,27 @@ export class ServicesDataService {
   }
 
   private static async validateTechnician(techId?: number) {
-    if (!techId) return;
-    const technician = await prismaClient.technician.findUnique({
-      where: { id: techId },
+    if (!techId) return null;
+
+    const technician = await prismaClient.technician.findFirst({
+      where: {
+        id: techId,
+        deleted_at: null,
+      },
     });
-    if (!technician) throw new ResponseError(400, "Invalid technician ID");
-    if (!technician.is_active)
+
+    if (!technician) {
+      throw new ResponseError(
+        404,
+        "Invalid technician ID or technician has been deleted",
+      );
+    }
+
+    if (!technician.is_active) {
       throw new ResponseError(400, "Cannot assign to inactive technician");
+    }
+
+    return technician;
   }
 
   private static calculatePricing(

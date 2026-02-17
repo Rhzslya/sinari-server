@@ -21,7 +21,19 @@ type TechnicianWithCount = {
   };
 };
 
+export type GetDetailedTechnicianRequest = {
+  id: number;
+};
+
+export type DeleteTechnicianRequest = {
+  id: number;
+};
+
 export type RestoreTechnicianRequest = {
+  id: number;
+};
+
+export type CheckTechnicianExistRequest = {
   id: number;
 };
 

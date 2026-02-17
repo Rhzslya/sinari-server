@@ -24,6 +24,12 @@ import {
   type DetailedUserResponse,
   toDetailedUserResponse,
   type RestoreUserRequest,
+  type DeleteUserRequest,
+  type VerifyUserRequest,
+  toResetPasswordResponse,
+  type GetDetailedUserRequest,
+  type ResendVerificationRequest,
+  type CheckUserExistsRequest,
 } from "../model/user-model";
 import { GoogleAuth } from "../utils/google-auth";
 import { UserValidation } from "../validation/user-validation";
@@ -183,23 +189,19 @@ export class UserService {
     return toUserResponse(user);
   }
 
-  // UserService.ts
-
-  static async getById(user: User, id: number): Promise<DetailedUserResponse> {
+  static async getById(
+    user: User,
+    request: GetDetailedUserRequest,
+  ): Promise<DetailedUserResponse> {
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const targetUser = await this.checkUserExists(id);
+    const targetUser = await this.checkUserExists(request.id);
 
     const isOnlineCheck = await redis.exists(`online_users:${targetUser.id}`);
 
-    const userDetailed = toDetailedUserResponse(targetUser);
-
-    return {
-      ...userDetailed,
-      is_online: isOnlineCheck === 1,
-    };
+    return toDetailedUserResponse(targetUser, isOnlineCheck === 1);
   }
 
   static async update(
@@ -328,12 +330,7 @@ export class UserService {
       users.map(async (user) => {
         const isOnline = await redis.exists(`online_users:${user.id}`);
 
-        const userResponse = toNotPublicUserResponse(user);
-
-        return {
-          ...userResponse,
-          is_online: isOnline === 1,
-        };
+        return toNotPublicUserResponse(user, isOnline === 1);
       }),
     );
 
@@ -407,12 +404,7 @@ export class UserService {
 
     const isOnline = await redis.exists(`online_users:${targetUser.id}`);
 
-    const response = toNotPublicUserResponse(updateUserRole);
-
-    return {
-      ...response,
-      is_online: isOnline === 1,
-    };
+    return toNotPublicUserResponse(updateUserRole, isOnline === 1);
   }
 
   static async logout(user: User): Promise<UserResponse> {
@@ -428,10 +420,12 @@ export class UserService {
     return toUserResponse(result);
   }
 
-  static async checkUserExist(id: number): Promise<UserResponse> {
+  static async checkUserExist(
+    request: CheckUserExistsRequest,
+  ): Promise<UserResponse> {
     const user = await prismaClient.user.findUnique({
       where: {
-        id: id,
+        id: request.id,
       },
     });
 
@@ -442,17 +436,20 @@ export class UserService {
     return user;
   }
 
-  static async removeUser(user: User, id: number): Promise<boolean> {
+  static async removeUser(
+    user: User,
+    request: DeleteUserRequest,
+  ): Promise<boolean> {
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    if (user.id === id) {
+    if (user.id === request.id) {
       throw new ResponseError(400, "You cannot delete your own account");
     }
 
     const targetUser = await prismaClient.user.findUnique({
-      where: { id: id },
+      where: { id: request.id },
     });
 
     if (!targetUser) {
@@ -486,7 +483,7 @@ export class UserService {
 
     await prismaClient.user.update({
       where: {
-        id: id,
+        id: request.id,
       },
       data: {
         deleted_at: new Date(),
@@ -532,13 +529,12 @@ export class UserService {
 
     await Mail.sendRestoredUser(restoredUser.email!, restoredUser.name!);
 
-    return toNotPublicUserResponse(restoredUser);
+    return toNotPublicUserResponse(restoredUser, false);
   }
 
   static async loginWithGoogle(
     request: CreateUserWithGoogleRequest,
   ): Promise<UserResponse> {
-    // 1. DATA VALIDATION
     const validatedRequest = Validation.validate(
       UserValidation.GOOGLE_LOGIN,
       request,
@@ -602,7 +598,6 @@ export class UserService {
     return toUserResponseWithToken({ ...user, token: jwtToken });
   }
 
-  // --- PRIVATE HELPER ---
   private static async registerNewGoogleUser(
     googlePayload: GooglePayload,
   ): Promise<User> {
@@ -610,7 +605,6 @@ export class UserService {
     let isCreated = false;
     let retryCount = 0;
 
-    // Initiation User | null
     let user: User | null = null;
 
     while (!isCreated && retryCount < 5) {
@@ -681,10 +675,10 @@ export class UserService {
     return user;
   }
 
-  static async verify(token: string): Promise<boolean> {
+  static async verify(request: VerifyUserRequest): Promise<boolean> {
     const user = await prismaClient.user.findFirst({
       where: {
-        verify_token: token,
+        verify_token: request.token,
       },
     });
 
@@ -717,11 +711,11 @@ export class UserService {
   private static readonly MAX_DAILY_RESEND = 5;
 
   static async resendVerificationMail(
-    identifier: string,
+    request: ResendVerificationRequest,
   ): Promise<EmailVerificationResponse> {
     const user = await prismaClient.user.findFirst({
       where: {
-        OR: [{ email: identifier }, { username: identifier }],
+        OR: [{ email: request.identifier }, { username: request.identifier }],
       },
     });
 
@@ -919,9 +913,6 @@ export class UserService {
       },
     });
 
-    return {
-      message:
-        "Password has been successfully reset. Please login with your new password.",
-    };
+    return toResetPasswordResponse();
   }
 }

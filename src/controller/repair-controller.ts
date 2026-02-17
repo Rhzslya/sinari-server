@@ -33,7 +33,7 @@ export class ServiceController {
         throw new ResponseError(400, "Invalid service ID");
       }
 
-      const response = await ServicesDataService.get(user, id);
+      const response = await ServicesDataService.get(user, { id });
 
       return c.json({ data: response });
     } catch (error) {
@@ -42,12 +42,20 @@ export class ServiceController {
   }
 
   static async getPublic(c: Context) {
-    const identifier = c.req.param("identifier");
+    try {
+      const identifier = c.req.param("identifier");
 
-    const response = await ServicesDataService.trackPublic(identifier);
-    return c.json({ data: response });
+      if (!identifier) {
+        throw new ResponseError(400, "Identifier is required");
+      }
+
+      const response = await ServicesDataService.trackPublic({ identifier });
+
+      return c.json({ data: response });
+    } catch (error) {
+      throw error;
+    }
   }
-
   static async update(c: Context) {
     try {
       const user = c.var.user as User;
@@ -80,7 +88,7 @@ export class ServiceController {
         throw new ResponseError(400, "Invalid service ID");
       }
 
-      await ServicesDataService.remove(user, id);
+      await ServicesDataService.remove(user, { id });
 
       return c.json({
         data: true,

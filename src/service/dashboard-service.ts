@@ -151,7 +151,7 @@ export class DashboardService {
         orderBy: { created_at: "desc" },
         include: {
           user: { select: { username: true, role: true } },
-          product: { select: { id: true, name: true } },
+          product: { select: { id: true, name: true, deleted_at: true } },
         },
       }),
       prismaClient.productLog.aggregate({
@@ -253,7 +253,7 @@ export class DashboardService {
       time: log.created_at.toISOString(),
       product_pk: log.product_id,
       product_name: log.product.name,
-      is_deleted: false,
+      is_deleted: log.product.deleted_at !== null,
     }));
 
     const combinedRecentLogs = [

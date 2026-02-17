@@ -1,7 +1,3 @@
-import {
-  ServiceLogAction,
-  type ServiceLog,
-} from "../../generated/prisma/browser";
 import type {
   Brand,
   Service,
@@ -131,6 +127,14 @@ export type DeleteServiceRequest = {
 
 export type RestoreServiceRequest = {
   id: number;
+};
+
+export type CheckServiceExistsRequest = {
+  id: number;
+};
+
+export type TrackPublicServiceRequest = {
+  identifier: string;
 };
 
 export function toServiceResponse(

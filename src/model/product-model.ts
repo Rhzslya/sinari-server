@@ -79,6 +79,14 @@ export type DeleteProductRequest = {
   id: number;
 };
 
+export type GetDetailedProductRequest = {
+  id: number;
+};
+
+export type CheckProductExistRequest = {
+  id: number;
+};
+
 export function toProductResponse(product: Product): ProductResponse {
   return {
     id: product.id,

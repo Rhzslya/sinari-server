@@ -44,6 +44,10 @@ export type DetailedUserResponse = {
   is_online?: boolean;
 };
 
+export type MessageResponse = {
+  message: string;
+};
+
 export type CreateUserRequest = {
   email: string;
   username: string;
@@ -116,6 +120,26 @@ export type RestoreUserRequest = {
   id: number;
 };
 
+export type DeleteUserRequest = {
+  id: number;
+};
+
+export type GetDetailedUserRequest = {
+  id: number;
+};
+
+export type CheckUserExistsRequest = {
+  id: number;
+};
+
+export type VerifyUserRequest = {
+  token: string;
+};
+
+export type ResendVerificationRequest = {
+  identifier: string;
+};
+
 export function toUserResponse(user: User): UserResponse {
   return {
     id: user.id,
@@ -134,7 +158,10 @@ export function toUserResponseWithToken(user: User): UserResponse {
   };
 }
 
-export function toNotPublicUserResponse(user: User): NotPublicUserResponse {
+export function toNotPublicUserResponse(
+  user: User,
+  isOnline?: boolean,
+): NotPublicUserResponse {
   return {
     id: user.id,
     name: user.name,
@@ -144,10 +171,14 @@ export function toNotPublicUserResponse(user: User): NotPublicUserResponse {
     google_id: user.google_id,
     created_at: user.created_at,
     updated_at: user.updated_at,
+    is_online: isOnline,
   };
 }
 
-export function toDetailedUserResponse(user: User): DetailedUserResponse {
+export function toDetailedUserResponse(
+  user: User,
+  isOnline?: boolean,
+): DetailedUserResponse {
   return {
     id: user.id,
     name: user.name,
@@ -165,6 +196,7 @@ export function toDetailedUserResponse(user: User): DetailedUserResponse {
       user.password_reset_expires_at?.toISOString() || null,
     pass_reset_count: user.pass_reset_count,
     pass_reset_last_time: user.pass_reset_last_time?.toISOString() || null,
+    is_online: isOnline,
   };
 }
 
@@ -183,6 +215,17 @@ export function toForgotPasswordResponse(
   return {
     email: maskEmail(email),
     message: "Forgot password Request has been sent successfully",
+  };
+}
+
+export function toMessageResponse(message: string): MessageResponse {
+  return { message };
+}
+
+export function toResetPasswordResponse(): ResetPasswordResponse {
+  return {
+    message:
+      "Password has been successfully reset. Please login with your new password.",
   };
 }
 

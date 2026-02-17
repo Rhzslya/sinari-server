@@ -16,7 +16,7 @@ export class RepairLogService {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    await CheckExist.checkServiceExists(serviceId);
+    await CheckExist.checkServiceExists({ id: serviceId });
 
     const logs = await prismaClient.serviceLog.findMany({
       where: {

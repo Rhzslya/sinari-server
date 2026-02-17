@@ -63,7 +63,7 @@ export class ProductController {
         throw new ResponseError(400, "Invalid product ID");
       }
 
-      const response = await ProductsService.get(user, id);
+      const response = await ProductsService.get(user, { id });
 
       return c.json({ data: response });
     } catch (error) {
@@ -136,7 +136,7 @@ export class ProductController {
         throw new ResponseError(400, "Invalid product ID");
       }
 
-      await ProductsService.remove(user, id);
+      await ProductsService.remove(user, { id });
 
       return c.json({
         data: true,

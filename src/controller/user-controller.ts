@@ -61,7 +61,7 @@ export class UserController {
         throw new ResponseError(400, "Invalid user ID");
       }
 
-      const response = await UserService.getById(user, id);
+      const response = await UserService.getById(user, { id });
 
       return c.json({ data: response });
     } catch (error) {
@@ -165,7 +165,7 @@ export class UserController {
         throw new ResponseError(400, "Invalid user ID");
       }
 
-      await UserService.removeUser(user, id);
+      await UserService.removeUser(user, { id });
 
       return c.json({
         data: true,
@@ -214,7 +214,7 @@ export class UserController {
         throw new ResponseError(400, "Token is required");
       }
 
-      const response = await UserService.verify(token);
+      const response = await UserService.verify({ token });
 
       return c.json({ data: response });
     } catch (error) {
@@ -230,7 +230,7 @@ export class UserController {
         throw new ResponseError(400, "Email or Username is required");
       }
 
-      const response = await UserService.resendVerificationMail(identifier);
+      const response = await UserService.resendVerificationMail({ identifier });
 
       return c.json({
         data: response,

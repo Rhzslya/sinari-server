@@ -10,7 +10,10 @@ import type { Pageable } from "../model/page-model";
 import {
   toListTechnicianResponse,
   toTechnicianResponse,
+  type CheckTechnicianExistRequest,
   type CreateTechnicianRequest,
+  type DeleteTechnicianRequest,
+  type GetDetailedTechnicianRequest,
   type ListTechnicianResponse,
   type RestoreTechnicianRequest,
   type SearchTechnicianRequest,
@@ -64,10 +67,12 @@ export class TechnicianService {
     return toTechnicianResponse(technician);
   }
 
-  static async checkTechnicianExist(id: number): Promise<TechnicianResponse> {
+  static async checkTechnicianExist(
+    request: CheckTechnicianExistRequest,
+  ): Promise<TechnicianResponse> {
     const technician = await prismaClient.technician.findUnique({
       where: {
-        id: id,
+        id: request.id,
         deleted_at: null,
       },
     });
@@ -79,12 +84,15 @@ export class TechnicianService {
     return technician;
   }
 
-  static async get(user: User, id: number): Promise<TechnicianResponse | null> {
+  static async get(
+    user: User,
+    request: GetDetailedTechnicianRequest,
+  ): Promise<TechnicianResponse | null> {
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const technician = await this.checkTechnicianExist(id);
+    const technician = await this.checkTechnicianExist({ id: request.id });
 
     return toTechnicianResponse(technician);
   }
@@ -130,7 +138,9 @@ export class TechnicianService {
       request,
     );
 
-    const oldTechnician = await this.checkTechnicianExist(updateRequest.id);
+    const oldTechnician = await this.checkTechnicianExist({
+      id: updateRequest.id,
+    });
 
     if (updateRequest.is_active === false && oldTechnician.is_active === true) {
       const ongoingServiceCount = await prismaClient.service.count({
@@ -152,21 +162,6 @@ export class TechnicianService {
           400,
           "Cannot Update To Inactive: Technician has ongoing services",
         );
-      }
-    }
-
-    if (updateRequest.name) {
-      const countName = await prismaClient.technician.count({
-        where: {
-          name: updateRequest.name,
-          id: {
-            not: updateRequest.id,
-          },
-        },
-      });
-
-      if (countName > 0) {
-        throw new ResponseError(409, "Technician name already exists");
       }
     }
 
@@ -205,16 +200,19 @@ export class TechnicianService {
     return toTechnicianResponse(technician);
   }
 
-  static async remove(user: User, id: number): Promise<boolean> {
+  static async remove(
+    user: User,
+    request: DeleteTechnicianRequest,
+  ): Promise<boolean> {
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const technician = await this.checkTechnicianExist(id);
+    const technician = await this.checkTechnicianExist({ id: request.id });
 
     const activeOngoingServices = await prismaClient.service.count({
       where: {
-        technician_id: id,
+        technician_id: request.id,
         deleted_at: null,
         status: {
           notIn: [
@@ -238,7 +236,7 @@ export class TechnicianService {
     }
 
     await prismaClient.technician.update({
-      where: { id: id },
+      where: { id: request.id },
       data: {
         deleted_at: new Date(),
         is_active: false,

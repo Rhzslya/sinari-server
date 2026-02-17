@@ -6,6 +6,7 @@ import type {
 } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { ResponseError } from "../error/response-error";
+import type { CheckServiceExistsRequest } from "../model/repair-model";
 
 export class CheckExist {
   static async checkProductExist(id: number): Promise<Product> {
@@ -23,13 +24,13 @@ export class CheckExist {
   }
 
   static async checkServiceExists(
-    id: number,
+    request: CheckServiceExistsRequest,
   ): Promise<
     Service & { service_list: ServiceItem[]; technician: Technician }
   > {
     const service = await prismaClient.service.findUnique({
       where: {
-        id: id,
+        id: request.id,
         deleted_at: null,
       },
       include: {
