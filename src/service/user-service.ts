@@ -30,6 +30,7 @@ import {
   type GetDetailedUserRequest,
   type ResendVerificationRequest,
   type CheckUserExistsRequest,
+  maskEmail,
 } from "../model/user-model";
 import { GoogleAuth } from "../utils/google-auth";
 import { UserValidation } from "../validation/user-validation";
@@ -713,6 +714,19 @@ export class UserService {
   static async resendVerificationMail(
     request: ResendVerificationRequest,
   ): Promise<EmailVerificationResponse> {
+    const identifier = request.identifier;
+    const cooldownKey = `cooldown:resend:${identifier.toLowerCase()}`;
+
+    const cachedEmail = await redis.get<string>(cooldownKey);
+    if (cachedEmail) {
+      const remainingSeconds = await redis.ttl(cooldownKey);
+
+      throw new ResponseError(
+        400,
+        `Please wait ${remainingSeconds} seconds before resending.|${maskEmail(cachedEmail)}`,
+      );
+    }
+
     const user = await prismaClient.user.findFirst({
       where: {
         OR: [{ email: request.identifier }, { username: request.identifier }],
@@ -747,23 +761,6 @@ export class UserService {
       );
     }
 
-    if (user.verify_expires_at) {
-      const lastTokenCreatedAt =
-        user.verify_expires_at.getTime() - this.TOKEN_DURATION_MS;
-
-      const timeSinceLastRequest = Date.now() - lastTokenCreatedAt;
-
-      if (timeSinceLastRequest < this.COOLDOWN_MS) {
-        const remainingSeconds = Math.ceil(
-          (this.COOLDOWN_MS - timeSinceLastRequest) / 1000,
-        );
-        throw new ResponseError(
-          400,
-          `Please wait ${remainingSeconds} seconds before resending.`,
-        );
-      }
-    }
-
     const newVerifyToken = uuid();
 
     const expiresAt = new Date(Date.now() + this.TOKEN_DURATION_MS);
@@ -782,6 +779,8 @@ export class UserService {
 
     await Mail.sendVerificationMail(user.email!, newVerifyToken, user.name!);
 
+    await redis.set(cooldownKey, user.email, { ex: this.COOLDOWN_MS / 1000 });
+
     return toEmailVerificationResponse(user.email!);
   }
 
@@ -798,6 +797,19 @@ export class UserService {
     );
 
     const identifier = forgotPasswordRequest.identifier;
+    const cooldownKey = `cooldown:forgot:${identifier.toLowerCase()}`;
+
+    const cachedEmail = await redis.get<string>(cooldownKey);
+    if (cachedEmail) {
+      const remainingSeconds = await redis.ttl(cooldownKey);
+
+      throw new ResponseError(
+        400,
+        `Please wait ${remainingSeconds} seconds before resending.|${maskEmail(
+          cachedEmail,
+        )}`,
+      );
+    }
 
     const user = await prismaClient.user.findFirst({
       where: {
@@ -836,21 +848,6 @@ export class UserService {
       );
     }
 
-    if (user.pass_reset_last_time) {
-      const timeSinceLastRequest =
-        Date.now() - new Date(user.pass_reset_last_time).getTime();
-
-      if (timeSinceLastRequest < this.PASS_RESET_COOLDOWN_MS) {
-        const remainingSeconds = Math.ceil(
-          (this.PASS_RESET_COOLDOWN_MS - timeSinceLastRequest) / 1000,
-        );
-        throw new ResponseError(
-          429,
-          `Please wait ${remainingSeconds} seconds before requesting another link.`,
-        );
-      }
-    }
-
     const resetToken = uuid();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
@@ -867,6 +864,8 @@ export class UserService {
     });
 
     await Mail.sendPasswordResetMail(user.email!, resetToken, user.name!);
+
+    await redis.set(cooldownKey, user.email!, { ex: this.COOLDOWN_MS / 1000 });
 
     return toForgotPasswordResponse(user.email!);
   }
