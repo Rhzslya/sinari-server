@@ -70,6 +70,20 @@ export class ProductValidation {
     sort_order: z.enum(["asc", "desc"]).optional(),
   });
 
+  static readonly SEARCH_PUBLIC = z.object({
+    name: z.string().min(1).max(100).optional(),
+    brand: z.enum(BRAND_VALUES).optional(),
+    manufacturer: z.string().min(1).max(100).optional(),
+    category: z.enum(CATEGORY_VALUES).optional(),
+    min_price: z.coerce.number().min(0).optional(),
+    max_price: z.coerce.number().min(0).optional(),
+    in_stock_only: z.coerce.boolean().optional(),
+    page: z.coerce.number().min(1).default(1),
+    size: z.coerce.number().min(1).max(100).default(10),
+    sort_by: z.enum(["price", "stock", "created_at"]).optional(),
+    sort_order: z.enum(["asc", "desc"]).optional(),
+  });
+
   static readonly RESTORE = z.object({
     id: z.coerce.number().min(1).positive(),
   });

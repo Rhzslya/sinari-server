@@ -9,6 +9,7 @@ import {
 } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { ResponseError } from "../error/response-error";
+import { redis } from "../lib/redis";
 import type { Pageable } from "../model/page-model";
 import {
   toProductPublicResponse,
@@ -233,6 +234,21 @@ export class ProductsService {
       ProductValidation.SEARCH,
       request,
     );
+    const isNotCustomer = user && user.role !== UserRole.CUSTOMER;
+    const rolePrefix = isNotCustomer ? "internal" : "public";
+
+    const queryHash = Buffer.from(JSON.stringify(searchRequest)).toString(
+      "base64",
+    );
+
+    const CACHE_KEY = `products:search:${rolePrefix}:${queryHash}`;
+
+    const cachedData = await redis.get<string>(CACHE_KEY);
+    if (cachedData) {
+      return typeof cachedData === "string"
+        ? JSON.parse(cachedData)
+        : cachedData;
+    }
 
     const skip = (searchRequest.page - 1) * searchRequest.size;
 
@@ -289,8 +305,6 @@ export class ProductsService {
       where: whereClause,
     });
 
-    const isNotCustomer = user && user.role !== UserRole.CUSTOMER;
-
     const data = products.map((product) => {
       if (isNotCustomer) {
         return toProductResponse(product);
@@ -299,7 +313,7 @@ export class ProductsService {
       }
     });
 
-    return {
+    const result = {
       data: data,
       paging: {
         size: searchRequest.size,
@@ -307,6 +321,10 @@ export class ProductsService {
         total_page: Math.ceil(totalItems / searchRequest.size),
       },
     };
+
+    await redis.set(CACHE_KEY, JSON.stringify(result), { ex: 60 });
+
+    return result;
   }
 
   static async update(

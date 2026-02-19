@@ -5,6 +5,7 @@ import {
   type User,
 } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
+import { redis } from "../lib/redis";
 import {
   toDashboardStatsResponse,
   type DashboardStatsResponse,
@@ -14,6 +15,16 @@ export class DashboardService {
   static async getStats(user: User): Promise<DashboardStatsResponse> {
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new Error("Forbidden: Insufficient permissions");
+    }
+
+    const CACHE_KEY = "dashboard:stats:global";
+
+    const cachedData = await redis.get<DashboardStatsResponse>(CACHE_KEY);
+
+    if (cachedData) {
+      return typeof cachedData === "string"
+        ? JSON.parse(cachedData)
+        : cachedData;
     }
 
     const now = new Date();
@@ -263,7 +274,7 @@ export class DashboardService {
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
       .slice(0, 5);
 
-    return toDashboardStatsResponse({
+    const result = toDashboardStatsResponse({
       revenue: currentRevenueTotal,
       revenueGrowth: revenueGrowth,
       profit: currentProfitTotal,
@@ -275,5 +286,9 @@ export class DashboardService {
       monthlyRevenue: chartData,
       logs: combinedRecentLogs,
     });
+
+    await redis.set(CACHE_KEY, JSON.stringify(result), { ex: 300 });
+
+    return result;
   }
 }

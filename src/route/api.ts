@@ -10,6 +10,10 @@ import { ownerMiddleware } from "../middleware/owner-middleware";
 import { ServiceLogController } from "../controller/repair-logs-controller";
 import { DashboardController } from "../controller/dashboard-controller";
 import { ProductLogController } from "../controller/product-logs-controller";
+import {
+  readLimiterMiddleware,
+  writeLimiterMiddleware,
+} from "../middleware/rate-limiter";
 
 export const apiRouter = new Hono<{ Variables: ApplicationVariables }>();
 
@@ -18,23 +22,56 @@ apiRouter.use(authMiddleware);
 
 // ================= USER API =================
 apiRouter.get("/api/users/current", UserController.get);
-apiRouter.patch("/api/users/current", UserController.update);
+apiRouter.patch(
+  "/api/users/current",
+  writeLimiterMiddleware,
+  UserController.update,
+);
 apiRouter.delete("/api/users/logout", UserController.logout);
 
 // Admin & Owner Routes
-apiRouter.get("/api/users", adminMiddleware, UserController.search);
-apiRouter.patch("/api/users/:id", ownerMiddleware, UserController.updateRole);
+apiRouter.get(
+  "/api/users",
+  adminMiddleware,
+  readLimiterMiddleware,
+  UserController.search,
+);
+apiRouter.patch(
+  "/api/users/:id",
+  ownerMiddleware,
+  writeLimiterMiddleware,
+  UserController.updateRole,
+);
 apiRouter.get("/api/users/:id", adminMiddleware, UserController.getById);
-apiRouter.delete("/api/users/:id", adminMiddleware, UserController.removeUser);
 
-// ================= SERVICE API =================
-apiRouter.get("/api/services", adminMiddleware, ServiceController.search);
-apiRouter.post("/api/services", adminMiddleware, ServiceController.create);
+//  Write Limiter
+apiRouter.delete(
+  "/api/users/:id",
+  adminMiddleware,
+  writeLimiterMiddleware,
+  UserController.removeUser,
+);
 
 apiRouter.patch(
   "/api/users/:id/restore",
   ownerMiddleware,
+  writeLimiterMiddleware,
   UserController.restore,
+);
+
+// ================= SERVICE API =================
+apiRouter.get(
+  "/api/services",
+  adminMiddleware,
+  readLimiterMiddleware,
+  ServiceController.search,
+);
+
+apiRouter.post(
+  "/api/services",
+  adminMiddleware,
+  writeLimiterMiddleware,
+  ServiceController.create,
 );
 
 // Route Service Logs
@@ -53,73 +90,139 @@ apiRouter.get(
 apiRouter.patch(
   "/api/services/:id/restore",
   ownerMiddleware,
+  writeLimiterMiddleware,
   ServiceController.restore,
 );
 
 // CRUD Standard (Admin)
 apiRouter.get("/api/services/:id", adminMiddleware, ServiceController.get);
-apiRouter.patch("/api/services/:id", adminMiddleware, ServiceController.update);
+
+apiRouter.patch(
+  "/api/services/:id",
+  adminMiddleware,
+  writeLimiterMiddleware,
+  ServiceController.update,
+);
+
+//  Write Limiter
 apiRouter.delete(
   "/api/services/:id",
   adminMiddleware,
+  writeLimiterMiddleware,
   ServiceController.remove,
 );
 
 // ================= PRODUCT API =================
-apiRouter.use("/api/products/*", adminMiddleware);
-apiRouter.get("/api/products", adminMiddleware, ProductController.search);
-apiRouter.post("/api/products", ProductController.create);
-apiRouter.patch("/api/products/:id", ProductController.update);
-apiRouter.patch("/api/products/:id/stock", ProductController.updateStock);
+
+apiRouter.get(
+  "/api/products",
+  adminMiddleware,
+  readLimiterMiddleware,
+  ProductController.search,
+);
+
+apiRouter.post(
+  "/api/products",
+  adminMiddleware,
+  writeLimiterMiddleware,
+  ProductController.create,
+);
+
+apiRouter.patch(
+  "/api/products/:id",
+  adminMiddleware,
+  writeLimiterMiddleware,
+  ProductController.update,
+);
+
+apiRouter.patch(
+  "/api/products/:id/stock",
+  adminMiddleware,
+  writeLimiterMiddleware,
+  ProductController.updateStock,
+);
 
 apiRouter.get("/api/products/:id", adminMiddleware, ProductController.get);
+
+//  Write Limiter
 apiRouter.delete(
   "/api/products/:id",
   adminMiddleware,
+  writeLimiterMiddleware,
   ProductController.remove,
 );
+
+//  Write Limiter
 apiRouter.patch(
   "/api/product-logs/:id/void",
   ownerMiddleware,
+  writeLimiterMiddleware,
   ProductLogController.voidLog,
 );
 
+//  Write Limiter
 apiRouter.patch(
   "/api/products/:id/restore",
   ownerMiddleware,
+  writeLimiterMiddleware,
   ProductController.restore,
 );
 
 // ================= TECHNICIAN API =================
+
 apiRouter.post(
   "/api/technicians",
   adminMiddleware,
+  writeLimiterMiddleware,
   TechnicianController.create,
 );
 
-apiRouter.get("/api/technicians/active", TechnicianController.listActive);
+apiRouter.get(
+  "/api/technicians/active",
+  adminMiddleware,
+  TechnicianController.listActive,
+);
 
 // Search & Detail
-apiRouter.get("/api/technicians", TechnicianController.search);
-apiRouter.get("/api/technicians/:id", TechnicianController.get);
+apiRouter.get(
+  "/api/technicians",
+  adminMiddleware,
+  readLimiterMiddleware,
+  TechnicianController.search,
+);
+apiRouter.get(
+  "/api/technicians/:id",
+  adminMiddleware,
+  TechnicianController.get,
+);
 
 // Update & Delete
 apiRouter.patch(
   "/api/technicians/:id",
   adminMiddleware,
+  writeLimiterMiddleware,
   TechnicianController.update,
 );
+
+// Write Limiter
 apiRouter.delete(
   "/api/technicians/:id",
   adminMiddleware,
+  writeLimiterMiddleware,
   TechnicianController.remove,
 );
 
 apiRouter.patch(
   "/api/technicians/:id/restore",
   ownerMiddleware,
+  writeLimiterMiddleware,
   TechnicianController.restore,
 );
 
 // ================= DASHBOARD API =================
-apiRouter.get("/api/dashboard/stats", adminMiddleware, DashboardController.get);
+apiRouter.get(
+  "/api/dashboard/stats",
+  adminMiddleware,
+  readLimiterMiddleware,
+  DashboardController.get,
+);

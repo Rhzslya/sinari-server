@@ -743,7 +743,7 @@ export class UserService {
 
     let currentCount = user.resend_count;
 
-    if (!user.last_resend_time) {
+    if (user.last_resend_time) {
       const lastDateISO = new Date(user.last_resend_time!)
         .toISOString()
         .split("T")[0];

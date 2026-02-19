@@ -6,6 +6,7 @@ import {
 } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { ResponseError } from "../error/response-error";
+import { redis } from "../lib/redis";
 import type { Pageable } from "../model/page-model";
 import {
   toListTechnicianResponse,
@@ -64,6 +65,8 @@ export class TechnicianService {
       },
     });
 
+    await redis.del("technicians:active");
+
     return toTechnicianResponse(technician);
   }
 
@@ -101,6 +104,13 @@ export class TechnicianService {
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
+
+    const CACHE_KEY = "technicians:active";
+    const cachedData = await redis.get<string>(CACHE_KEY);
+    if (cachedData) {
+      return JSON.parse(cachedData) as ListTechnicianResponse[];
+    }
+
     const technicians = await prismaClient.technician.findMany({
       where: { is_active: true, deleted_at: null },
       select: {
@@ -121,6 +131,8 @@ export class TechnicianService {
     });
 
     technicians.sort((a, b) => a._count.services - b._count.services);
+
+    await redis.set(CACHE_KEY, JSON.stringify(technicians), { ex: 300 });
 
     return technicians.map((tech) => toListTechnicianResponse(tech));
   }
@@ -197,6 +209,8 @@ export class TechnicianService {
       },
     });
 
+    await redis.del("technicians:active");
+
     return toTechnicianResponse(technician);
   }
 
@@ -242,6 +256,8 @@ export class TechnicianService {
         is_active: false,
       },
     });
+
+    await redis.del("technicians:active");
 
     return true;
   }
