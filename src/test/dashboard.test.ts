@@ -16,7 +16,7 @@ import {
   ServiceLogAction,
 } from "../../generated/prisma/client";
 
-describe.only("Dashboard API", () => {
+describe("Dashboard API", () => {
   afterEach(async () => {
     await redis.del("dashboard:stats:global");
 
@@ -127,7 +127,7 @@ describe.only("Dashboard API", () => {
     });
 
     it("should reject if no token is provided (401 Unauthorized)", async () => {
-      const response = await TestRequest.get("/api/dashboard/stats"); // Tanpa token
+      const response = await TestRequest.get("/api/dashboard/stats");
 
       expect(response.status).toBe(401);
     });

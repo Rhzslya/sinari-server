@@ -9,7 +9,7 @@ import { prismaClient } from "../application/database";
 import { logger } from "../application/logging";
 import { ProductLogAction } from "../../generated/prisma/client";
 
-describe.only("Product Log API", () => {
+describe("Product Log API", () => {
   afterEach(async () => {
     await ProductLogTest.delete();
     await ProductTest.delete();
