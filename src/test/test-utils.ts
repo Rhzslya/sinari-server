@@ -3,7 +3,6 @@ import { prismaClient } from "../application/database";
 import { web } from "../application/web";
 import bcrypt from "bcrypt";
 import { sign } from "hono/jwt";
-import "dotenv/config";
 
 export class UserTest {
   static async delete() {
