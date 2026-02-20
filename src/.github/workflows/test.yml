@@ -60,6 +60,11 @@ jobs:
         env:
           # 1. Database & Local
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/sinari_test
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASSWORD: root
+          DB_NAME: sinari_test
           BASE_URL: http://localhost:3000
 
           # 2. Dummy Values
