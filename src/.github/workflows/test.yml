@@ -45,42 +45,36 @@ jobs:
       - name: Install Dependencies
         run: bun install
 
-      - name: Set Environment Variables
-        run: |
-          echo "DATABASE_URL=mysql://root:root@127.0.0.1:3306/sinari_test" >> $GITHUB_ENV
-          echo "DB_HOST=127.0.0.1" >> $GITHUB_ENV
-          echo "DB_PORT=3306" >> $GITHUB_ENV
-          echo "DB_USER=root" >> $GITHUB_ENV
-          echo "DB_PASSWORD=root" >> $GITHUB_ENV
-          echo "DB_NAME=sinari_test" >> $GITHUB_ENV
-          echo "REDIS_URL=redis://127.0.0.1:6379" >> $GITHUB_ENV
-          echo "JWT_SECRET=super_secret_test_key_123" >> $GITHUB_ENV
-          echo "BASE_URL=http://localhost:3000" >> $GITHUB_ENV
-          echo "MAIL_SENDER=dummy@test.com" >> $GITHUB_ENV
-          echo "MAIL_PASSWORD=dummy" >> $GITHUB_ENV
-          echo "GOOGLE_CLIENT_ID=dummy" >> $GITHUB_ENV
-          echo "GOOGLE_CLIENT_SECRET=dummy" >> $GITHUB_ENV
-          echo "GOOGLE_REDIRECT_URI=http://localhost/dummy" >> $GITHUB_ENV
-
-      - name: Create .env file
-        run: |
-          touch .env
-          echo "DATABASE_URL=mysql://root:root@127.0.0.1:3306/sinari_test" >> .env
-          echo "DB_HOST=127.0.0.1" >> .env
-          echo "DB_PORT=3306" >> .env
-          echo "DB_USER=root" >> .env
-          echo "DB_PASSWORD=root" >> .env
-          echo "DB_NAME=sinari_test" >> .env
-
       - name: Generate Prisma
-        run: bun x prisma generate
+        run: bunx prisma generate
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/sinari_test
 
       - name: Setup Database
-        run: bun x prisma db push
+        run: bunx prisma db push
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/sinari_test
 
       - name: Run Tests
         run: bun test
         env:
+          # 1. Database & Local
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/sinari_test
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASSWORD: root
+          DB_NAME: sinari_test
+          BASE_URL: http://localhost:3000
+
+          # 2. Dummy Values
+          JWT_SECRET: super_secret_test_key_123
+          MAIL_SENDER: dummy@test.com
+          MAIL_PASSWORD: dummy
+          GOOGLE_CLIENT_ID: dummy
+          GOOGLE_CLIENT_SECRET: dummy
+          GOOGLE_REDIRECT_URI: http://localhost/dummy
+
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
