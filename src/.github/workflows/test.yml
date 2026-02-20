@@ -69,7 +69,7 @@ jobs:
         run: bunx prisma db push
 
       - name: Run Tests
-        run: bun test
+        run: bun test --serial
         env:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}

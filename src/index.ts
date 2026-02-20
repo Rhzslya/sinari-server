@@ -1,7 +1,4 @@
-import { Hono } from "hono";
 import { web } from "./application/web";
-
-const app = new Hono();
 
 web.get("/", (c) => {
   return c.text("Halo, Sinari Server is Running");
@@ -29,5 +26,5 @@ web.get("/", (c) => {
 
 export default {
   port: 3000,
-  fetch: app.fetch,
+  fetch: web.fetch,
 };

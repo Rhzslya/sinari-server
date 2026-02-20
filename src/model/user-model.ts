@@ -155,6 +155,7 @@ export function toUserResponseWithToken(user: User): UserResponse {
   return {
     ...toUserResponse(user),
     google_id: user.google_id,
+    token: user.token,
   };
 }
 

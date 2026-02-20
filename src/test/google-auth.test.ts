@@ -2,6 +2,7 @@ import { describe, afterEach, it, expect, spyOn, beforeEach } from "bun:test";
 import { TestRequest, UserTest } from "./test-utils";
 import { GoogleAuth } from "../utils/google-auth";
 import { logger } from "../application/logging";
+import { prismaClient } from "../application/database";
 
 describe("POST /api/auth/google", () => {
   beforeEach(async () => {
@@ -36,7 +37,10 @@ describe("POST /api/auth/google", () => {
     expect(body.data.email).toBe("test123@gmail.com");
     expect(body.data.name).toBe("test");
     expect(body.data.google_id).toBe("123123123");
-    expect(body.data.token).toBeDefined();
+
+    const cookieHeader = response.headers.get("Set-Cookie");
+    expect(cookieHeader).toBeTruthy();
+    expect(cookieHeader).toContain("auth_token=");
 
     googleSpy.mockRestore();
   });
@@ -62,13 +66,23 @@ describe("POST /api/auth/google", () => {
     expect(body.data.email).toBe("test123@gmail.com");
     expect(body.data.name).toBe("test");
     expect(body.data.google_id).toBe("123123123");
-    expect(body.data.token).toBeDefined();
+
+    const cookieHeader = response.headers.get("Set-Cookie");
+    expect(cookieHeader).toBeTruthy();
+    expect(cookieHeader).toContain("auth_token=");
 
     googleSpy.mockRestore();
   });
 
   it("should generate random username suffix if username already exists ", async () => {
-    await UserTest.createGoogleDuplicate();
+    await prismaClient.user.create({
+      data: {
+        email: "email_lain@gmail.com",
+        username: "test",
+        name: "Tumbal",
+        is_verified: true,
+      },
+    });
 
     const googleSpy = spyOn(GoogleAuth, "verifyToken").mockResolvedValue({
       google_id: "99999",
@@ -86,9 +100,13 @@ describe("POST /api/auth/google", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.email).toBe("test@gmail.com");
+
     expect(body.data.username).not.toBe("test");
     expect(body.data.username).toContain("test-");
-    expect(body.data.token).toBeDefined();
+
+    const cookieHeader = response.headers.get("Set-Cookie");
+    expect(cookieHeader).toBeTruthy();
+    expect(cookieHeader).toContain("auth_token=");
 
     googleSpy.mockRestore();
   });
@@ -98,7 +116,7 @@ describe("POST /api/auth/google", () => {
 
     const googleSpy = spyOn(GoogleAuth, "verifyToken").mockResolvedValue({
       google_id: "123123123",
-      email: "test@gmail.com",
+      email: "test_customer@gmail.com",
       name: "test",
     });
 

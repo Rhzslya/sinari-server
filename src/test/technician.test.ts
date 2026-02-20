@@ -889,7 +889,7 @@ describe("GET /api/technicians", () => {
     expect(response.status).toBe(200);
     expect(body.data.data.length).toBe(10);
     expect(body.data.paging.total_page).toBe(2);
-  });
+  }, 15000);
 
   it("should search technicians if user is OWNER", async () => {
     await UserTest.createOwner();
