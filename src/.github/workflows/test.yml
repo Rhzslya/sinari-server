@@ -42,23 +42,22 @@ jobs:
       - name: Install Dependencies
         run: bun install
 
-      - name: Create .env file dynamically
+      - name: Set Environment Variables System-Wide
         run: |
-          touch .env
-          echo "DATABASE_URL=mysql://root:root@127.0.0.1:3306/sinari_test" >> .env
-          echo "REDIS_URL=redis://127.0.0.1:6379" >> .env
-          echo "BASE_URL=http://localhost:3000" >> .env
-          echo "JWT_SECRET=super_secret_test_key_123" >> .env
-          echo "MAIL_SENDER=dummy@test.com" >> .env
-          echo "MAIL_PASSWORD=dummy" >> .env
-          echo "GOOGLE_CLIENT_ID=dummy" >> .env
-          echo "GOOGLE_CLIENT_SECRET=dummy" >> .env
-          echo "GOOGLE_REDIRECT_URI=http://localhost/dummy" >> .env
-          echo "CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}" >> .env
-          echo "CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}" >> .env
-          echo "CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}" >> .env
-          echo "UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }}" >> .env
-          echo "UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" >> .env
+          echo "DATABASE_URL=mysql://root:root@127.0.0.1:3306/sinari_test" >> $GITHUB_ENV
+          echo "REDIS_URL=redis://127.0.0.1:6379" >> $GITHUB_ENV
+          echo "BASE_URL=http://localhost:3000" >> $GITHUB_ENV
+          echo "JWT_SECRET=super_secret_test_key_123" >> $GITHUB_ENV
+          echo "MAIL_SENDER=dummy@test.com" >> $GITHUB_ENV
+          echo "MAIL_PASSWORD=dummy" >> $GITHUB_ENV
+          echo "GOOGLE_CLIENT_ID=dummy" >> $GITHUB_ENV
+          echo "GOOGLE_CLIENT_SECRET=dummy" >> $GITHUB_ENV
+          echo "GOOGLE_REDIRECT_URI=http://localhost/dummy" >> $GITHUB_ENV
+          echo "CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}" >> $GITHUB_ENV
+          echo "CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}" >> $GITHUB_ENV
+          echo "CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}" >> $GITHUB_ENV
+          echo "UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }}" >> $GITHUB_ENV
+          echo "UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" >> $GITHUB_ENV
 
       - name: Generate Prisma
         run: bunx prisma generate
