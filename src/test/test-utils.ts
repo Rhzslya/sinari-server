@@ -1,12 +1,9 @@
-import {
-  UserRole,
-  type Service,
-  type User,
-} from "../../generated/prisma/client";
+import { UserRole, type User } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { web } from "../application/web";
 import bcrypt from "bcrypt";
 import { sign } from "hono/jwt";
+import "dotenv/config";
 
 export class UserTest {
   static async delete() {

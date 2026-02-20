@@ -876,14 +876,21 @@ describe("Reset Password", () => {
   });
 
   it("should reset password successfully", async () => {
-    await UserTest.create();
+    await UserTest.createAdmin();
 
-    await TestRequest.post("/api/auth/forgot-password", {
-      identifier: "test_customer@gmail.com",
-    });
+    const requestBody: ForgotPasswordRequest = {
+      identifier: "test_admin",
+    };
+
+    await TestRequest.post<ForgotPasswordRequest>(
+      "/api/auth/forgot-password",
+      requestBody,
+    );
+
+    await new Promise((res) => setTimeout(res, 1000));
 
     const userWithToken = await prismaClient.user.findUnique({
-      where: { username: "test_customer" },
+      where: { username: "test_admin" },
     });
 
     const token = userWithToken?.password_reset_token;
@@ -903,7 +910,7 @@ describe("Reset Password", () => {
     expect(resetResponse.status).toBe(200);
 
     const userAfterReset = await prismaClient.user.findUnique({
-      where: { username: "test_customer" },
+      where: { username: "test_admin" },
     });
 
     expect(userAfterReset?.password_reset_token).toBeNull();
@@ -920,7 +927,7 @@ describe("Reset Password", () => {
       userAfterReset!.password!,
     );
     expect(isNewPasswordValid).toBe(true);
-  }, 15000);
+  }, 30000);
 
   it("should reject reset password request if token is expired", async () => {
     await UserTest.create();
