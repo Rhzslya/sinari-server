@@ -1,22 +1,11 @@
 import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { publicRouter } from "./route/public-api";
-import { errorMiddleware } from "./middleware/error-middleware";
-import { apiRouter } from "./route/api";
-import whatsappClient, { WhatsappService } from "./lib/whatsapp";
+import { web } from "./application/web";
 
 const app = new Hono();
 
-app.use("/*", cors());
-
-app.get("/", (c) => {
+web.get("/", (c) => {
   return c.text("Halo, Sinari Server is Running");
 });
-
-app.route("/", publicRouter);
-app.route("/", apiRouter);
-
-app.onError(errorMiddleware);
 
 // console.log("Initializing WhatsApp Client...");
 // whatsappClient.initialize().catch((err) => {

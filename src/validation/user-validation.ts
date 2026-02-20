@@ -104,7 +104,30 @@ export class UserValidation {
   });
 
   static readonly FORGOT_PASSWORD = z.object({
-    identifier: z.string().min(1).max(100),
+    identifier: z
+      .string()
+      .min(1, "Username or Email is required")
+      .max(100, "Username/Email is too long")
+      .superRefine((val, ctx) => {
+        if (val.includes("@")) {
+          const isEmailValid = z.email().safeParse(val).success;
+
+          if (!isEmailValid) {
+            ctx.addIssue({
+              code: "custom",
+              message: "Invalid email address",
+            });
+          }
+          return;
+        }
+
+        if (val.length < 3) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Username must be at least 3 characters",
+          });
+        }
+      }),
   });
 
   static readonly GOOGLE_LOGIN = z.object({

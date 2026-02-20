@@ -16,17 +16,17 @@ import { CheckExist } from "../utils/check-exist";
 export class ProductLogService {
   static async getLogs(
     user: User,
-    productId: number,
+    request: GetLogRequest,
   ): Promise<ProductLogResponse[]> {
     if (user.role !== UserRole.OWNER) {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    await CheckExist.checkProductExist(productId);
+    await CheckExist.checkProductExist({ id: request.id });
 
     const logs = await prismaClient.productLog.findMany({
       where: {
-        product_id: productId,
+        product_id: request.id,
       },
       include: {
         user: true,

@@ -1,46 +1,23 @@
+// file: src/application/web.ts
 import { Hono } from "hono";
-import { apiRouter } from "../route/api";
+import { cors } from "hono/cors";
 import { publicRouter } from "../route/public-api";
 import { errorMiddleware } from "../middleware/error-middleware";
-import { rateLimiter } from "hono-rate-limiter";
+import { apiRouter } from "../route/api";
 
 export const web = new Hono();
 
-const generalLimiter = rateLimiter({
-  windowMs: 15 * 60 * 1000,
-  limit: 100,
-  standardHeaders: "draft-6",
-  keyGenerator: (c) => {
-    const ip = c.req.header("x-forwarded-for");
-    return ip ? ip.split(",")[0] : "unknown";
-  },
-  message: {
-    message:
-      "Too many requests from this IP, please try again after 15 minutes",
-  },
-});
-
-const authLimiter = rateLimiter({
-  windowMs: 15 * 60 * 1000,
-  limit: 5,
-  standardHeaders: "draft-6",
-  keyGenerator: (c) => {
-    const ip = c.req.header("x-forwarded-for");
-    return ip ? ip.split(",")[0] : "unknown";
-  },
-  message: {
-    message: "Too many login attempts, please try again after 15 minutes.",
-  },
-});
-
-web.use("/api/login", authLimiter);
-
-web.use("/api/*", generalLimiter);
-
-// REGISTER ROUTES
+web.use(
+  "/*",
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization", "Accept"],
+  }),
+);
 
 web.route("/", publicRouter);
 web.route("/", apiRouter);
 
-// ERROR HANDLER
 web.onError(errorMiddleware);

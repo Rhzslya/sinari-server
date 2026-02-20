@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { deleteCookie, setCookie } from "hono/cookie";
 import type {
   CreateUserRequest,
   CreateUserWithGoogleRequest,
@@ -33,7 +34,21 @@ export class UserController {
 
       const response = await UserService.login(request);
 
-      return c.json({ data: response });
+      if (!response.token) {
+        throw new ResponseError(500, "Failed to generate authentication token");
+      }
+
+      setCookie(c, "auth_token", response.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Strict",
+        maxAge: 60 * 60 * 24,
+        path: "/",
+      });
+
+      const { token, ...safeResponse } = response;
+
+      return c.json({ data: safeResponse });
     } catch (error) {
       throw error;
     }
@@ -45,7 +60,9 @@ export class UserController {
 
       const response = await UserService.get(user);
 
-      return c.json({ data: response });
+      const { token, ...safeResponse } = response;
+
+      return c.json({ data: safeResponse });
     } catch (error) {
       throw error;
     }
@@ -149,6 +166,12 @@ export class UserController {
 
       await UserService.logout(user);
 
+      deleteCookie(c, "auth_token", {
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Strict",
+      });
+
       return c.json({ data: "OK" });
     } catch (error) {
       throw error;
@@ -200,7 +223,21 @@ export class UserController {
 
       const response = await UserService.loginWithGoogle(request);
 
-      return c.json({ data: response });
+      if (!response.token) {
+        throw new ResponseError(500, "Failed to generate authentication token");
+      }
+
+      setCookie(c, "auth_token", response.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Strict",
+        maxAge: 60 * 60 * 24,
+        path: "/",
+      });
+
+      const { token, ...safeResponse } = response;
+
+      return c.json({ data: safeResponse });
     } catch (error) {
       throw error;
     }

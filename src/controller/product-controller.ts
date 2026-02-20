@@ -39,23 +39,7 @@ export class ProductController {
 
   static async get(c: Context) {
     try {
-      let user = null;
-
-      const authHeader = c.req.header("Authorization");
-
-      if (authHeader) {
-        const token = authHeader.split(" ")[1];
-
-        user = await prismaClient.user.findFirst({
-          where: {
-            token: token,
-          },
-        });
-
-        if (!user) {
-          throw new ResponseError(401, "Unauthorized: Invalid Token");
-        }
-      }
+      const user = c.var.user || null;
 
       const id = Number(c.req.param("id"));
 

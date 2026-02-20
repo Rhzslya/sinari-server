@@ -81,7 +81,7 @@ describe("POST /api/services", () => {
       brand: "OTHER",
       model: "test",
       customer_name: "test",
-      phone_number: "test",
+      phone_number: "08123123123",
       description: "test",
       technician_note: "test",
       service_list: [
@@ -107,7 +107,7 @@ describe("POST /api/services", () => {
     expect(body.data.brand).toBe("OTHER");
     expect(body.data.model).toBe("test");
     expect(body.data.customer_name).toBe("test");
-    expect(body.data.phone_number).toBe("62");
+    expect(body.data.phone_number).toBe("628123123123");
     expect(body.data.description).toBe("test");
     expect(body.data.technician_note).toBe("test");
     expect(body.data.service_list[0].name).toBe("test");
@@ -125,7 +125,7 @@ describe("POST /api/services", () => {
       brand: "OTHER",
       model: "test",
       customer_name: "test",
-      phone_number: "test",
+      phone_number: "08123123123",
       description: "test",
       technician_note: "test",
       service_list: [
@@ -155,7 +155,7 @@ describe("POST /api/services", () => {
     expect(body.data.brand).toBe("OTHER");
     expect(body.data.model).toBe("test");
     expect(body.data.customer_name).toBe("test");
-    expect(body.data.phone_number).toBe("62");
+    expect(body.data.phone_number).toBe("628123123123");
     expect(body.data.description).toBe("test");
     expect(body.data.technician_note).toBe("test");
     expect(body.data.service_list[0].name).toBe("test");
@@ -178,7 +178,7 @@ describe("POST /api/services", () => {
       brand: "OTHER",
       model: "test",
       customer_name: "test",
-      phone_number: "test",
+      phone_number: "08123123123",
       description: "test",
       technician_note: "test",
       service_list: [
@@ -209,7 +209,7 @@ describe("POST /api/services", () => {
     expect(body.data.brand).toBe("OTHER");
     expect(body.data.model).toBe("test");
     expect(body.data.customer_name).toBe("test");
-    expect(body.data.phone_number).toBe("62");
+    expect(body.data.phone_number).toBe("628123123123");
     expect(body.data.description).toBe("test");
     expect(body.data.technician_note).toBe("test");
     expect(body.data.service_list[0].name).toBe("test");
@@ -232,7 +232,7 @@ describe("POST /api/services", () => {
       brand: "OTHER",
       model: "test",
       customer_name: "Simple User",
-      phone_number: "08123",
+      phone_number: "08123123123",
       service_list: [{ name: "Fix", price: 1000 }],
       technician_id: technician.id,
     };
@@ -264,7 +264,7 @@ describe("POST /api/services", () => {
       brand: "OTHER",
       model: "test",
       customer_name: "test",
-      phone_number: "test",
+      phone_number: "08123123123",
       description: "test",
       technician_note: "test",
       service_list: [],
@@ -293,7 +293,7 @@ describe("POST /api/services", () => {
       brand: "OTHER",
       model: "test",
       customer_name: "test",
-      phone_number: "test",
+      phone_number: "08123123123",
       description: "test",
       technician_note: "test",
       service_list: [],
@@ -324,7 +324,7 @@ describe("POST /api/services", () => {
       brand: "OTHER",
       model: "test",
       customer_name: "test",
-      phone_number: "test",
+      phone_number: "08123123123",
       service_list: [{ name: "Service 1", price: 10000 }],
       discount: 150,
       technician_id: technician.id,
@@ -353,7 +353,7 @@ describe("POST /api/services", () => {
       brand: "OTHER",
       model: "test",
       customer_name: "test",
-      phone_number: "test",
+      phone_number: "08123123123",
       service_list: [
         {
           name: "Ganti LCD",
@@ -384,7 +384,7 @@ describe("POST /api/services", () => {
       brand: "OTHER",
       model: "",
       customer_name: "Valid Name",
-      phone_number: "08123",
+      phone_number: "08123123123",
       service_list: [{ name: "Fix", price: 1000 }],
       technician_id: technician.id,
     };
@@ -410,7 +410,7 @@ describe("POST /api/services", () => {
       brand: "OTHER",
       model: "test",
       customer_name: "test",
-      phone_number: "test",
+      phone_number: "08123123123",
       description: "test",
       technician_note: "test",
       service_list: [
@@ -480,7 +480,7 @@ describe("POST /api/services", () => {
       brand: "OTHER",
       model: "test",
       customer_name: "test",
-      phone_number: "08123",
+      phone_number: "08123123123",
       service_list: [{ name: "Fix", price: 1000 }],
       technician_id: inactiveTechnician.id,
     };
@@ -540,7 +540,7 @@ describe("POST /api/services", () => {
       brand: "OTHER",
       model: "test",
       customer_name: "test",
-      phone_number: "08123",
+      phone_number: "08123123123",
       service_list: [{ name: "Service A", price: 100000 }],
       down_payment: 50000,
       technician_id: technician.id,
@@ -584,6 +584,7 @@ describe("POST /api/services", () => {
 describe("GET /api/services/:id", () => {
   afterEach(async () => {
     await ServiceTest.deleteAll();
+    await TechnicianTest.delete();
     await UserTest.delete();
   });
 
@@ -703,6 +704,7 @@ describe("GET /api/services/:id", () => {
 describe("GET /api/public/services/track/:token", () => {
   afterEach(async () => {
     await ServiceTest.deleteAll();
+    await TechnicianTest.delete();
   });
 
   it("should get service by token", async () => {
@@ -783,6 +785,7 @@ describe("GET /api/public/services/track/:token", () => {
 describe("PATCH /api/services/:id", () => {
   afterEach(async () => {
     await ServiceTest.deleteAll();
+    await TechnicianTest.delete();
     await UserTest.delete();
   });
 
@@ -1236,6 +1239,7 @@ describe("DELETE /api/services/:id", () => {
   afterEach(async () => {
     await ServiceLogTest.delete();
     await ServiceTest.deleteAll();
+    await TechnicianTest.delete();
     await UserTest.delete();
   });
 
@@ -1775,7 +1779,7 @@ describe("GET /api/services", () => {
         brand: "OTHER",
         model: "test",
         customer_name: "test",
-        phone_number: "test",
+        phone_number: "08123123123",
         description: "test",
         technician_note: "test",
         status: "PENDING",
@@ -1804,7 +1808,7 @@ describe("GET /api/services", () => {
         brand: "OTHER",
         model: "test",
         customer_name: "test",
-        phone_number: "test",
+        phone_number: "08123123123",
         description: "test",
         technician_note: "test",
         status: "PENDING",
@@ -1906,6 +1910,7 @@ describe("PATCH /api/services/:id/restore", () => {
   afterEach(async () => {
     await ServiceLogTest.delete();
     await ServiceTest.deleteAll();
+    await TechnicianTest.delete();
     await UserTest.delete();
   });
 

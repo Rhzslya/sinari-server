@@ -3,6 +3,7 @@ import { verify } from "hono/jwt";
 import { prismaClient } from "../application/database";
 import type { ApplicationVariables } from "../type/hono-context";
 import { Redis } from "@upstash/redis";
+import { getCookie } from "hono/cookie";
 
 const redis = Redis.fromEnv();
 
@@ -10,13 +11,7 @@ export const authMiddleware = async (
   c: Context<{ Variables: ApplicationVariables }>,
   next: Next,
 ) => {
-  const authHeader = c.req.header("Authorization");
-
-  if (!authHeader) {
-    return c.json({ errors: "Unauthorized" }, 401);
-  }
-
-  const token = authHeader.split(" ")[1];
+  const token = getCookie(c, "auth_token");
 
   if (!token) {
     return c.json({ errors: "Unauthorized" }, 401);

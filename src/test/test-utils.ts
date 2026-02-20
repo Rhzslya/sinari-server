@@ -466,9 +466,20 @@ export class TestRequest {
     }
 
     if (token) {
-      headers.append("Authorization", `Bearer ${token}`);
+      headers.append("Cookie", `auth_token=${token}`);
     }
     return headers;
+  }
+
+  private static createMockEnv() {
+    return {
+      server: {
+        requestIP: () => {
+          const randomIP = `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+          return { address: randomIP, family: "IPv4" };
+        },
+      },
+    };
   }
 
   static async post<T>(
@@ -476,11 +487,15 @@ export class TestRequest {
     body: T,
     token?: string,
   ): Promise<Response> {
-    return web.request(url, {
-      method: "POST",
-      headers: this.makeHeaders(token),
-      body: JSON.stringify(body),
-    });
+    return web.request(
+      url,
+      {
+        method: "POST",
+        headers: this.makeHeaders(token),
+        body: JSON.stringify(body),
+      },
+      this.createMockEnv(),
+    );
   }
 
   static async postMultipart(
@@ -490,21 +505,29 @@ export class TestRequest {
   ): Promise<Response> {
     const headers = new Headers();
     if (token) {
-      headers.append("Authorization", `Bearer ${token}`);
+      headers.append("Cookie", `auth_token=${token}`);
     }
 
-    return web.request(url, {
-      method: "POST",
-      headers: headers,
-      body: formData,
-    });
+    return web.request(
+      url,
+      {
+        method: "POST",
+        headers: headers,
+        body: formData,
+      },
+      this.createMockEnv(),
+    );
   }
 
   static async get(url: string, token?: string): Promise<Response> {
-    return web.request(url, {
-      method: "GET",
-      headers: this.makeHeaders(token),
-    });
+    return web.request(
+      url,
+      {
+        method: "GET",
+        headers: this.makeHeaders(token),
+      },
+      this.createMockEnv(),
+    );
   }
 
   static async patch<T>(
@@ -512,18 +535,26 @@ export class TestRequest {
     body: T,
     token?: string,
   ): Promise<Response> {
-    return web.request(url, {
-      method: "PATCH",
-      headers: this.makeHeaders(token),
-      body: JSON.stringify(body),
-    });
+    return web.request(
+      url,
+      {
+        method: "PATCH",
+        headers: this.makeHeaders(token),
+        body: JSON.stringify(body),
+      },
+      this.createMockEnv(),
+    );
   }
 
   static async delete(url: string, token?: string): Promise<Response> {
-    return web.request(url, {
-      method: "DELETE",
-      headers: this.makeHeaders(token),
-    });
+    return web.request(
+      url,
+      {
+        method: "DELETE",
+        headers: this.makeHeaders(token),
+      },
+      this.createMockEnv(),
+    );
   }
 
   static async patchMultipart(
@@ -533,13 +564,17 @@ export class TestRequest {
   ): Promise<Response> {
     const headers = new Headers();
     if (token) {
-      headers.append("Authorization", `Bearer ${token}`);
+      headers.append("Cookie", `auth_token=${token}`);
     }
 
-    return web.request(url, {
-      method: "PATCH",
-      headers: headers,
-      body: formData,
-    });
+    return web.request(
+      url,
+      {
+        method: "PATCH",
+        headers: headers,
+        body: formData,
+      },
+      this.createMockEnv(),
+    );
   }
 }

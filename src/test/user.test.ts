@@ -903,13 +903,12 @@ describe("Reset Password", () => {
     expect(resetResponse.status).toBe(200);
 
     const userAfterReset = await prismaClient.user.findUnique({
-      where: { username: "test_customer" }, // Cari username yang benar
+      where: { username: "test_customer" },
     });
 
     expect(userAfterReset?.password_reset_token).toBeNull();
     expect(userAfterReset?.password_reset_expires_at).toBeNull();
 
-    // 4. Bandingkan dengan password asli yang ada di UserTest.create() yaitu "@Adm1n5123"
     const isOldPasswordValid = await bcrypt.compare(
       "@Adm1n5123",
       userAfterReset!.password!,

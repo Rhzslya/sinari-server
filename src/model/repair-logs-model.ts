@@ -17,6 +17,10 @@ export type ServiceLogResponse = {
   };
 };
 
+export type GetLogRequest = {
+  id: number;
+};
+
 export function toServiceLogResponse(
   log: ServiceLog & { user: User },
 ): ServiceLogResponse {

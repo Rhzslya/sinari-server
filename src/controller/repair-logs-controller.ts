@@ -14,7 +14,7 @@ export class ServiceLogController {
         throw new ResponseError(400, "Invalid service log ID");
       }
 
-      const response = await RepairLogService.getLogs(user, id);
+      const response = await RepairLogService.getLogs(user, { id });
 
       return c.json({
         data: response,

@@ -14,7 +14,7 @@ export class ProductLogController {
         throw new ResponseError(400, "Invalid product log ID");
       }
 
-      const response = await ProductLogService.getLogs(user, id);
+      const response = await ProductLogService.getLogs(user, { id });
 
       return c.json({
         data: response,
