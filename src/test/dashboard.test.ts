@@ -15,8 +15,20 @@ import {
   ProductLogAction,
   ServiceLogAction,
 } from "../../generated/prisma/client";
+import { beforeEach } from "node:test";
 
 describe("Dashboard API", () => {
+  beforeEach(async () => {
+    await redis.del("dashboard:stats:global");
+
+    await ProductLogTest.delete();
+    await ServiceLogTest.delete();
+    await ServiceTest.deleteAll();
+    await ProductTest.delete();
+    await TechnicianTest.delete();
+    await UserTest.delete();
+  });
+
   afterEach(async () => {
     await redis.del("dashboard:stats:global");
 

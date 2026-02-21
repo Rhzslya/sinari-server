@@ -1,8 +1,14 @@
-import { describe, afterEach, it, expect } from "bun:test";
+import { describe, afterEach, it, expect, beforeEach } from "bun:test";
 import { TestRequest, UserTest, StoreSettingTest } from "./test-utils";
 import { logger } from "../application/logging";
+import { DEFAULT_STORE_SETTING } from "../config/store-setting";
 
 describe("Store Setting API", () => {
+  beforeEach(async () => {
+    await StoreSettingTest.delete();
+    await UserTest.delete();
+  });
+
   afterEach(async () => {
     await StoreSettingTest.delete();
     await UserTest.delete();
@@ -174,7 +180,7 @@ describe("Store Setting API", () => {
       expect(body.errors).toBeDefined();
     });
 
-    it("should return 404 if store settings have not been initialized", async () => {
+    it("should return default settings if store settings have not been initialized", async () => {
       await UserTest.createOwner();
       const owner = await UserTest.getOwner();
 
@@ -182,8 +188,10 @@ describe("Store Setting API", () => {
         "/api/store-setting",
         owner.token!,
       );
+      const body = await response.json();
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(200);
+      expect(body.data.store_name).toBe(DEFAULT_STORE_SETTING.STORE_NAME);
     });
   });
 });
