@@ -11,6 +11,7 @@ import {
 } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { ResponseError } from "../error/response-error";
+import { WhatsappService } from "../lib/whatsapp";
 import type { Pageable } from "../model/page-model";
 import {
   toPublicServiceResponse,
@@ -132,7 +133,7 @@ export class ServicesDataService {
     const trackingUrl = `http://localhost:5173/services/track/${service.tracking_token}`;
     const message = `Halo ${service.customer_name} Your service has been created. Please track it here: ${trackingUrl}`;
 
-    // await WhatsappService.sendMessage(service.phone_number, message);
+    await WhatsappService.sendMessage(service.phone_number, message);
     console.log("SENDING WA TO", service.phone_number, message);
 
     return toServiceResponse(service);

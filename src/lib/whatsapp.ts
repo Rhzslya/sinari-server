@@ -1,11 +1,19 @@
 import { Client, LocalAuth, type ClientOptions } from "whatsapp-web.js";
-import qrcode from "qrcode-terminal";
+import qrcode from "qrcode";
 import fs from "fs";
 import path from "path";
-import type { WhatsappSendResult } from "../type/whatsapp-type";
+import type {
+  WhatsappDisconnectResponse,
+  WhatsappSendResult,
+  WhatsappStatusResponse,
+} from "../model/whatsapp-model";
 
 const SESSION_PATH = path.join(process.cwd(), ".wwebjs_auth");
 const CLIENT_ID = "sinari_v1";
+
+let currentQR: string | null = null;
+let isConnected = false;
+let isInitializing = false;
 
 const cleanStore = () => {
   const sessionDir = path.join(SESSION_PATH, `session-${CLIENT_ID}`);
@@ -44,9 +52,15 @@ const whatsappClient = new Client({
   } as ClientOptions["puppeteer"],
 });
 
-whatsappClient.on("qr", (qr) => {
-  console.log("Scan QR code to login");
-  qrcode.generate(qr, { small: true });
+whatsappClient.on("qr", async (qr) => {
+  console.log("[WA] New QR Code generated, waiting for scan...");
+  isInitializing = false;
+  try {
+    currentQR = await qrcode.toDataURL(qr);
+    isConnected = false;
+  } catch (err) {
+    console.error("Failed to generate QR base64", err);
+  }
 });
 
 whatsappClient.on("authenticated", () => {
@@ -54,21 +68,96 @@ whatsappClient.on("authenticated", () => {
 });
 
 whatsappClient.on("ready", () => {
-  console.log("WhatsApp Client is Ready!");
+  console.log("[WA] WhatsApp Client is Ready!");
+  isConnected = true;
+  currentQR = null;
+  isInitializing = false;
+});
+
+whatsappClient.on("disconnected", async (reason) => {
+  console.log("[WA] WhatsApp Client was disconnected", reason);
+  isConnected = false;
+  currentQR = null;
+  isInitializing = true;
+
+  try {
+    await whatsappClient.destroy();
+  } catch (error) {
+    // Abaikan jika sudah terlanjur hancur
+  }
+
+  setTimeout(() => {
+    whatsappClient.initialize().catch((e) => {
+      console.error(e);
+      isInitializing = false;
+    });
+  }, 5000);
 });
 
 whatsappClient.on("auth_failure", (msg) => {
   console.error("WA Auth Failure:", msg);
+  isConnected = false;
+  currentQR = null;
+});
+
+isInitializing = true;
+whatsappClient.initialize().catch((e) => {
+  console.error(e);
+  isInitializing = false;
 });
 
 export class WhatsappService {
+  static getStatus(): WhatsappStatusResponse {
+    if (isConnected) {
+      return { status: "connected" };
+    }
+
+    if (currentQR) {
+      return { status: "loading_qr", qr_code: currentQR };
+    }
+
+    if (!isConnected && !currentQR && !isInitializing) {
+      console.log("[WA] Status is disconnected, waking up client...");
+      isInitializing = true;
+      whatsappClient.initialize().catch((err) => {
+        console.log("[WA Fix] Init error:", err);
+        isInitializing = false;
+      });
+    }
+    return { status: "disconnected" };
+  }
+
+  static async disconnectDevice(): Promise<WhatsappDisconnectResponse> {
+    try {
+      if (isConnected) {
+        await whatsappClient.logout();
+      }
+      isConnected = false;
+      currentQR = null;
+
+      return {
+        success: true,
+        message: "Device successfully disconnected. Generating new QR...",
+      };
+    } catch (error) {
+      console.error("Logout Error:", error);
+      return {
+        success: false,
+        message: "Failed to disconnect device.",
+      };
+    }
+  }
+
   static async sendMessage(
     to: string,
     message: string,
   ): Promise<WhatsappSendResult> {
     try {
-      if (!whatsappClient.info) {
-        return { success: false, error: "Whatsapp Client not ready" };
+      if (!isConnected || !whatsappClient.info) {
+        return {
+          success: false,
+          error: "Whatsapp Client not ready or disconnected",
+        };
       }
 
       const cleanNumber = to.replace(/\D/g, "");
@@ -78,7 +167,7 @@ export class WhatsappService {
       if (!isRegistered) {
         return {
           success: false,
-          error: "Number not registered",
+          error: "Number not registered on WhatsApp",
         };
       }
 
@@ -90,15 +179,12 @@ export class WhatsappService {
       return { success: true };
     } catch (error: unknown) {
       console.error("[WA Error]", error);
-
       let errorMessage = "Unknown Error";
-
       if (error instanceof Error) {
         errorMessage = error.message;
       } else if (typeof error === "string") {
         errorMessage = error;
       }
-
       return { success: false, error: errorMessage };
     }
   }

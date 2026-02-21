@@ -246,3 +246,18 @@ enum Category {
   ACCESSORY
   OTHER
 }
+
+
+model StoreSetting {
+  id              Int      @id @default(1) 
+  store_name      String   @db.VarChar(100)
+  store_address   String   @db.Text
+  store_phone     String   @db.VarChar(20)
+  store_email     String?  @db.VarChar(100)
+  store_website   String?  @db.VarChar(100)
+  warranty_text   String   @db.Text
+  payment_info    String   @db.Text
+  updated_at      DateTime @updatedAt
+
+  @@map("store_settings")
+}

@@ -106,9 +106,11 @@ export class TechnicianService {
     }
 
     const CACHE_KEY = "technicians:active";
-    const cachedData = await redis.get<string>(CACHE_KEY);
+
+    const cachedData = await redis.get<ListTechnicianResponse[]>(CACHE_KEY);
+
     if (cachedData) {
-      return JSON.parse(cachedData) as ListTechnicianResponse[];
+      return cachedData;
     }
 
     const technicians = await prismaClient.technician.findMany({

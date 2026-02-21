@@ -4,6 +4,7 @@ import { ServiceController } from "../controller/repair-controller";
 import { ProductController } from "../controller/product-controller";
 import {
   authLimiterMiddleware,
+  readLimiterMiddleware,
   writeLimiterMiddleware,
 } from "../middleware/rate-limiter";
 
@@ -31,6 +32,7 @@ publicRouter.patch("/api/auth/reset-password", authLimiterMiddleware, (c) =>
 // Repair Public Routes
 publicRouter.get(
   "/api/public/services/track/:identifier",
+  readLimiterMiddleware,
   ServiceController.getPublic,
 );
 
@@ -38,6 +40,6 @@ publicRouter.get(
 publicRouter.get("/api/public/products/:id", ProductController.get);
 publicRouter.get(
   "/api/public/products",
-  writeLimiterMiddleware,
+  readLimiterMiddleware,
   ProductController.search,
 );

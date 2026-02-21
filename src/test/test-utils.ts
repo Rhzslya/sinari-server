@@ -450,6 +450,39 @@ export class TechnicianTest {
   }
 }
 
+export class StoreSettingTest {
+  static async delete() {
+    await prismaClient.storeSetting.deleteMany({
+      where: {
+        id: 1,
+      },
+    });
+  }
+
+  static async create() {
+    return await prismaClient.storeSetting.create({
+      data: {
+        id: 1,
+        store_name: "Original Store Name",
+        store_address: "Jl. Lama No 1",
+        store_phone: "081111111111",
+        store_email: "old@email.com",
+        store_website: "www.old.com",
+        warranty_text: "Garansi lama",
+        payment_info: "BCA Lama",
+      },
+    });
+  }
+
+  static async get() {
+    return await prismaClient.storeSetting.findUnique({
+      where: {
+        id: 1,
+      },
+    });
+  }
+}
+
 export class TestRequest {
   private static makeHeaders(
     token?: string,

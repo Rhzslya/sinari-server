@@ -14,6 +14,8 @@ import {
   readLimiterMiddleware,
   writeLimiterMiddleware,
 } from "../middleware/rate-limiter";
+import { StoreSettingController } from "../controller/store-setting-controller";
+import { WhatsappController } from "../controller/whatsapp-controller";
 
 export const apiRouter = new Hono<{ Variables: ApplicationVariables }>();
 
@@ -225,4 +227,33 @@ apiRouter.get(
   adminMiddleware,
   readLimiterMiddleware,
   DashboardController.get,
+);
+
+// ================= STORE SETTING API =================
+apiRouter.patch(
+  "/api/store-setting",
+  ownerMiddleware,
+  writeLimiterMiddleware,
+  StoreSettingController.update,
+);
+
+apiRouter.get(
+  "/api/store-setting",
+  adminMiddleware,
+  readLimiterMiddleware,
+  StoreSettingController.get,
+);
+
+// ================= WHATSAPP API =================
+apiRouter.get(
+  "/api/whatsapp/status",
+  adminMiddleware,
+  readLimiterMiddleware,
+  WhatsappController.getStatus,
+);
+apiRouter.post(
+  "/api/whatsapp/disconnect",
+  adminMiddleware,
+  writeLimiterMiddleware,
+  WhatsappController.disconnect,
 );
