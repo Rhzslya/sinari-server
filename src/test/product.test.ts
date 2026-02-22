@@ -296,10 +296,11 @@ describe("POST /api/products", () => {
     );
     const body = await response.json();
 
-    if (response.status !== 200) {
-      console.log("CLOUDINARY ERROR:", body.errors);
-    }
+    logger.debug(body);
 
+    if (response.status !== 200) {
+      console.log("FULL ERROR RESPONSE:", JSON.stringify(body, null, 2));
+    }
     expect(response.status).toBe(200);
     expect(body.data.image_url).not.toBe("");
   }, 15000);

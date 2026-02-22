@@ -9,21 +9,21 @@ export const errorMiddleware = async (err: Error, c: Context) => {
       {
         errors: `Validation Error : ${JSON.stringify(err)}`,
       },
-      400
+      400,
     );
   } else if (err instanceof ResponseError) {
     return c.json(
       {
         errors: err.message,
       },
-      err.status as ContentfulStatusCode
+      err.status as ContentfulStatusCode,
     );
   } else {
     return c.json(
       {
         errors: err.message,
       },
-      500
+      500,
     );
   }
 };

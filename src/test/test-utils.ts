@@ -535,6 +535,7 @@ export class TestRequest {
     const headers = new Headers();
     if (token) {
       headers.append("Cookie", `auth_token=${token}`);
+      headers.append("Origin", "http://localhost:5173");
     }
 
     return web.request(
@@ -594,6 +595,7 @@ export class TestRequest {
     const headers = new Headers();
     if (token) {
       headers.append("Cookie", `auth_token=${token}`);
+      headers.append("Origin", "http://localhost:5173");
     }
 
     return web.request(
