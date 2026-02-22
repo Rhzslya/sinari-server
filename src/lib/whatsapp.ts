@@ -7,6 +7,8 @@ import type {
   WhatsappSendResult,
   WhatsappStatusResponse,
 } from "../model/whatsapp-model";
+import { UserRole, type User } from "../../generated/prisma/client";
+import { ResponseError } from "../error/response-error";
 
 const SESSION_PATH = path.join(process.cwd(), ".wwebjs_auth");
 const CLIENT_ID = "sinari_v1";
@@ -19,15 +21,24 @@ const cleanStore = () => {
   const sessionDir = path.join(SESSION_PATH, `session-${CLIENT_ID}`);
 
   if (fs.existsSync(sessionDir)) {
-    const lockFile = path.join(sessionDir, "SingletonLock");
-    try {
-      if (fs.existsSync(lockFile)) {
-        fs.unlinkSync(lockFile);
-        console.log("[WA Fix] SingletonLock removed.");
+    const lockFiles = [
+      "SingletonLock",
+      "SingletonCookie",
+      "SingletonSocket",
+      "lockfile",
+    ];
+
+    lockFiles.forEach((file) => {
+      const lockFilePath = path.join(sessionDir, file);
+      try {
+        if (fs.existsSync(lockFilePath)) {
+          fs.unlinkSync(lockFilePath);
+          console.log(`[WA Fix] ${file} removed.`);
+        }
+      } catch (e) {
+        // Abaikan jika gagal dihapus
       }
-    } catch (e) {
-      console.log("[WA Fix] Cleaning skipped.");
-    }
+    });
   }
 };
 
@@ -107,7 +118,14 @@ whatsappClient.initialize().catch((e) => {
 });
 
 export class WhatsappService {
-  static getStatus(): WhatsappStatusResponse {
+  static getStatus(user: User): WhatsappStatusResponse {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
+      throw new ResponseError(
+        403,
+        "Forbidden: Only Admin or Owner can access WhatsApp status",
+      );
+    }
+
     if (isConnected) {
       return { status: "connected" };
     }
@@ -127,7 +145,15 @@ export class WhatsappService {
     return { status: "disconnected" };
   }
 
-  static async disconnectDevice(): Promise<WhatsappDisconnectResponse> {
+  static async disconnectDevice(
+    user: User,
+  ): Promise<WhatsappDisconnectResponse> {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
+      throw new ResponseError(
+        403,
+        "Forbidden: Only Admin or Owner can disconnect WhatsApp",
+      );
+    }
     try {
       if (isConnected) {
         await whatsappClient.logout();

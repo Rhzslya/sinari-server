@@ -53,6 +53,7 @@ export type CreateUserRequest = {
   username: string;
   name: string;
   password: string;
+  secondary_number?: string; //Honeypot
 };
 
 export type LoginUserRequest = {

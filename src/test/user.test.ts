@@ -150,6 +150,39 @@ describe("POST /api/users", () => {
     expect(response.status).toBe(400);
     expect(body.errors).toBeDefined();
   });
+
+  it("should silently fail (return 200 but NOT save to DB) if honeypot field is filled by bot", async () => {
+    const requestBody: CreateUserRequest = {
+      email: "bot_spammer@gmail.com",
+      username: "bot_spammer",
+      password: "@Adm1n5123",
+      name: "Bot User",
+      secondary_number: "08123456789",
+    };
+
+    const response = await TestRequest.post<CreateUserRequest>(
+      "/api/users",
+      requestBody,
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+
+    expect(body.data.email).toBe("bot_spammer@gmail.com");
+    expect(body.data.username).toBe("bot_spammer");
+    expect(body.data.name).toBe("Bot User");
+    expect(body.data.id).toBeDefined();
+
+    const userInDb = await prismaClient.user.findUnique({
+      where: {
+        email: "bot_spammer@gmail.com",
+      },
+    });
+
+    expect(userInDb).toBeNull();
+  }, 15000);
 });
 
 describe("POST /api/auth/login", () => {

@@ -1,11 +1,13 @@
 import type { Context } from "hono";
 import { WhatsappService } from "../lib/whatsapp";
+import type { User } from "../../generated/prisma/client";
 
 export class WhatsappController {
   static async getStatus(c: Context) {
     try {
-      const response = WhatsappService.getStatus();
+      const user = c.get("user") as User;
 
+      const response = WhatsappService.getStatus(user);
       return c.json({ data: response });
     } catch (error) {
       throw error;
@@ -14,8 +16,8 @@ export class WhatsappController {
 
   static async disconnect(c: Context) {
     try {
-      const response = await WhatsappService.disconnectDevice();
-
+      const user = c.get("user") as User;
+      const response = await WhatsappService.disconnectDevice(user);
       return c.json({ data: response });
     } catch (error) {
       throw error;

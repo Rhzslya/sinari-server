@@ -55,6 +55,19 @@ export class UserService {
       request,
     );
 
+    if (registerRequest.secondary_number) {
+      console.warn(
+        `[BOT BLOCKED] Fake registration from: ${registerRequest.email}`,
+      );
+      return {
+        id: Math.floor(Math.random() * 10000) + 90000,
+        email: registerRequest.email,
+        username: registerRequest.username,
+        name: registerRequest.name,
+        role: UserRole.CUSTOMER,
+      } as UserResponse;
+    }
+
     const totalUserWithSameUsername = await prismaClient.user.count({
       where: {
         username: registerRequest.username,
@@ -81,20 +94,29 @@ export class UserService {
 
     const expiresAt = new Date(Date.now() + 1000 * 60 * 10);
 
+    const { secondary_number, ...userData } = registerRequest;
+
     const user = await prismaClient.user.create({
       data: {
-        ...registerRequest,
+        ...userData,
         verify_token: verifyToken,
         is_verified: false,
         verify_expires_at: expiresAt,
       },
     });
 
-    await Mail.sendVerificationMail(
-      user.email!,
-      user.verify_token!,
-      user.name!,
-    );
+    try {
+      await Mail.sendVerificationMail(
+        user.email!,
+        user.verify_token!,
+        user.name!,
+      );
+    } catch (error) {
+      console.error(
+        `[MAIL ERROR] Failed to send verification to ${user.email}`,
+        error,
+      );
+    }
 
     return toUserResponse(user);
   }

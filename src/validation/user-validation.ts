@@ -29,6 +29,8 @@ export class UserValidation {
     password: strongPassword,
 
     name: z.string().min(1, "Name is required").max(100, "Name is too long"),
+
+    secondary_number: z.string().optional(),
   });
 
   static readonly UPDATE = z
