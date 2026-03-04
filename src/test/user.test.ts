@@ -1649,7 +1649,7 @@ describe("PATCH /api/users/:id/restore", () => {
       );
     });
 
-    it.only("should lockout account (429) after 5 failed attempts", async () => {
+    it("should lockout account (429) after 5 failed attempts", async () => {
       token = await UserTest.createOwner();
 
       const updateData: ChangePasswordRequest = {
