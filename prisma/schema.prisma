@@ -103,6 +103,8 @@ model Service {
 
   grace_period_start DateTime?
 
+  is_anonymized   Boolean  @default(false)
+
   @@index([deleted_at])
   @@map("services")
 }
@@ -155,6 +157,7 @@ enum ServiceStatus {
   CANCELLED
   TAKEN
 }
+
 
 model Product {
   id           Int      @id @default(autoincrement())
@@ -234,6 +237,7 @@ enum Brand {
 }
 
 enum Category {
+  DEVICE
   LCD
   BATTERY
   CONNECTOR

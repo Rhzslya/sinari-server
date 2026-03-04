@@ -30,6 +30,11 @@ apiRouter.patch(
   UserController.update,
 );
 apiRouter.delete("/api/users/logout", UserController.logout);
+apiRouter.patch(
+  "/api/users/change-password",
+  writeLimiterMiddleware,
+  UserController.changePassword,
+);
 
 // Admin & Owner Routes
 apiRouter.get(
@@ -104,6 +109,13 @@ apiRouter.patch(
   adminMiddleware,
   writeLimiterMiddleware,
   ServiceController.update,
+);
+
+apiRouter.patch(
+  "/api/services/:id/anonymize-customer-data",
+  adminMiddleware,
+  writeLimiterMiddleware,
+  ServiceController.anonymizeCustomerData,
 );
 
 //  Write Limiter

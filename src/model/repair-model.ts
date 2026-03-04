@@ -28,6 +28,7 @@ export type ServiceResponse = {
   updated_at?: Date;
   tracking_token: string;
   grace_period_start?: Date | null;
+  is_anonymized: boolean;
   service_id: string;
   technician: {
     id: number;
@@ -137,6 +138,10 @@ export type TrackPublicServiceRequest = {
   identifier: string;
 };
 
+export type AnonymizeCustomerDataRequest = {
+  id: number;
+};
+
 export function toServiceResponse(
   service: Service & {
     service_list: ServiceItem[];
@@ -168,6 +173,7 @@ export function toServiceResponse(
     updated_at: service.updated_at,
     tracking_token: service.tracking_token,
     grace_period_start: service.grace_period_start,
+    is_anonymized: service.is_anonymized,
     technician: {
       id: service.technician.id,
       name: service.technician.name,
@@ -218,4 +224,9 @@ export function maskPhoneNumber(phoneNumber: string): string {
     "*".repeat(phoneNumber.length - visibleStart - visibleEnd) +
     phoneNumber.substring(phoneNumber.length - visibleEnd)
   );
+}
+
+export enum CustomerDataAnonymization {
+  ANONYMIZED_NAME = "Deleted Customer",
+  ANONYMIZED_PHONE = "000000000000",
 }

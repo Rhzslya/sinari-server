@@ -2,6 +2,7 @@ import { describe, afterEach, beforeEach, it, expect } from "bun:test";
 import { TestRequest, UserTest } from "./test-utils";
 import { logger } from "../application/logging";
 import type {
+  ChangePasswordRequest,
   CreateUserRequest,
   ForgotPasswordRequest,
   LoginUserRequest,
@@ -9,6 +10,7 @@ import type {
 } from "../model/user-model";
 import bcrypt from "bcrypt";
 import { prismaClient } from "../application/database";
+import { redis } from "../lib/redis";
 
 describe("POST /api/users", () => {
   // beforeEach(async () => {
@@ -1496,6 +1498,194 @@ describe("PATCH /api/users/:id/restore", () => {
 
       const body = await response.json();
 
+      logger.debug(body);
+
+      expect(response.status).toBe(401);
+      expect(body.errors).toBeDefined();
+    });
+  });
+
+  describe("PATCH /api/users/change-password", () => {
+    afterEach(async () => {
+      await UserTest.delete();
+      await UserTest.deleteGoogleDuplicate();
+
+      const user = await prismaClient.user.findFirst({
+        where: { username: "test_owner" },
+      });
+      if (user) {
+        await redis.del(`pwd_fail:${user.id}`);
+        await redis.del(`session_valid_after:${user.id}`);
+      }
+    });
+
+    let token = "";
+
+    it("should change password successfully", async () => {
+      token = await UserTest.createOwner();
+
+      const updateData: ChangePasswordRequest = {
+        old_password: "@Adm1n5123",
+        new_password: "@NewPassword123!",
+        confirm_new_password: "@NewPassword123!",
+      };
+
+      const response = await TestRequest.patch(
+        "/api/users/change-password",
+        updateData,
+        token,
+      );
+
+      const body = await response.json();
+      logger.debug(body);
+
+      expect(response.status).toBe(200);
+      expect(body.data.message).toBeDefined();
+    }, 15000);
+
+    it("should reject change password if confirm_new_password does not match", async () => {
+      token = await UserTest.createOwner();
+
+      const updateData: ChangePasswordRequest = {
+        old_password: "@Adm1n5123",
+        new_password: "@NewPassword123!",
+        confirm_new_password: "@DifferentPassword123!",
+      };
+
+      const response = await TestRequest.patch(
+        "/api/users/change-password",
+        updateData,
+        token,
+      );
+
+      const body = await response.json();
+      logger.debug(body);
+
+      expect(response.status).toBe(400);
+      expect(body.errors).toBeDefined();
+    });
+
+    it("should reject change password if new password is weak", async () => {
+      token = await UserTest.createOwner();
+
+      const updateData: ChangePasswordRequest = {
+        old_password: "@Adm1n5123",
+        new_password: "weakpassword",
+        confirm_new_password: "weakpassword",
+      };
+
+      const response = await TestRequest.patch(
+        "/api/users/change-password",
+        updateData,
+        token,
+      );
+
+      const body = await response.json();
+      logger.debug(body);
+
+      expect(response.status).toBe(400);
+      expect(body.errors).toBeDefined();
+    });
+
+    it("should reject and increment fail counter if old password is incorrect", async () => {
+      token = await UserTest.createOwner();
+
+      const updateData: ChangePasswordRequest = {
+        old_password: "@WrongPassword123",
+        new_password: "@NewPassword123!",
+        confirm_new_password: "@NewPassword123!",
+      };
+
+      const response = await TestRequest.patch(
+        "/api/users/change-password",
+        updateData,
+        token,
+      );
+
+      const body = await response.json();
+      logger.debug(body);
+
+      expect(response.status).toBe(400);
+      expect(body.errors).toContain("Current password is incorrect");
+    });
+
+    it("should reject if new password is the same as the old password", async () => {
+      token = await UserTest.createOwner();
+
+      const updateData: ChangePasswordRequest = {
+        old_password: "@Adm1n5123",
+        new_password: "@Adm1n5123",
+        confirm_new_password: "@Adm1n5123",
+      };
+
+      const response = await TestRequest.patch(
+        "/api/users/change-password",
+        updateData,
+        token,
+      );
+
+      const body = await response.json();
+      logger.debug(body);
+
+      expect(response.status).toBe(400);
+      expect(body.errors).toBe(
+        "New password cannot be the same as the current password",
+      );
+    });
+
+    it("should lockout account (429) after 5 failed attempts", async () => {
+      token = await UserTest.createOwner();
+
+      const updateData: ChangePasswordRequest = {
+        old_password: "@WrongPassword123",
+        new_password: "@NewPassword123!",
+        confirm_new_password: "@NewPassword123!",
+      };
+
+      for (let i = 1; i <= 4; i++) {
+        const res = await TestRequest.patch(
+          "/api/users/change-password",
+          updateData,
+          token,
+        );
+        expect(res.status).toBe(400);
+      }
+
+      const res5 = await TestRequest.patch(
+        "/api/users/change-password",
+        updateData,
+        token,
+      );
+      const body5 = await res5.json();
+      expect(res5.status).toBe(429);
+      expect(body5.errors).toContain(
+        "Account temporarily locked due to too many failed attempts.",
+      );
+
+      const res6 = await TestRequest.patch(
+        "/api/users/change-password",
+        updateData,
+        token,
+      );
+      const body6 = await res6.json();
+      expect(res6.status).toBe(429);
+      expect(body6.errors).toContain("Too many failed attempts. Please wait");
+    });
+
+    it("should reject change password if token is wrong/missing", async () => {
+      const updateData: ChangePasswordRequest = {
+        old_password: "@Adm1n5123",
+        new_password: "@NewPassword123!",
+        confirm_new_password: "@NewPassword123!",
+      };
+
+      const response = await TestRequest.patch(
+        "/api/users/change-password",
+        updateData,
+        "wrong_token",
+      );
+
+      const body = await response.json();
       logger.debug(body);
 
       expect(response.status).toBe(401);

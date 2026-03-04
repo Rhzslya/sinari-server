@@ -111,11 +111,11 @@ whatsappClient.on("auth_failure", (msg) => {
   currentQR = null;
 });
 
-isInitializing = true;
-whatsappClient.initialize().catch((e) => {
-  console.error(e);
-  isInitializing = false;
-});
+// isInitializing = true;
+// whatsappClient.initialize().catch((e) => {
+//   console.error(e);
+//   isInitializing = false;
+// });
 
 export class WhatsappService {
   static getStatus(user: User): WhatsappStatusResponse {

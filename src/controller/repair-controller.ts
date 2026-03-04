@@ -78,6 +78,29 @@ export class ServiceController {
     }
   }
 
+  static async anonymizeCustomerData(c: Context) {
+    try {
+      const user = c.var.user as User;
+
+      const id = Number(c.req.param("id"));
+
+      if (isNaN(id)) {
+        throw new ResponseError(400, "Invalid service ID");
+      }
+
+      await ServicesDataService.anonymizeCustomerData(user, {
+        id,
+      });
+
+      return c.json({
+        data: true,
+        message: `Customer data of service ${id} has been anonymized successfully.`,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
   static async remove(c: Context) {
     try {
       const user = c.var.user as User;

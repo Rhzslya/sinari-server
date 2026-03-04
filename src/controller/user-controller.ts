@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { deleteCookie, setCookie } from "hono/cookie";
 import type {
+  ChangePasswordRequest,
   CreateUserRequest,
   CreateUserWithGoogleRequest,
   ForgotPasswordRequest,
@@ -300,6 +301,20 @@ export class UserController {
       return c.json({
         data: response,
       });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async changePassword(c: Context) {
+    try {
+      const user = c.var.user as User;
+
+      const request = (await c.req.json()) as ChangePasswordRequest;
+
+      const response = await UserService.changePassword(user, request);
+
+      return c.json({ data: response });
     } catch (error) {
       throw error;
     }

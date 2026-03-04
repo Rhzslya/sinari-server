@@ -450,6 +450,18 @@ export class TechnicianTest {
   }
 }
 
+export class ContactTest {
+  static getValidPayload() {
+    return {
+      name: "Seira",
+      email: "seira@example.com",
+      phone_number: "081234567890",
+      subject: "Hello",
+      message: "Exported to PNG",
+    };
+  }
+}
+
 export class StoreSettingTest {
   static async delete() {
     await prismaClient.storeSetting.deleteMany({

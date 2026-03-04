@@ -113,7 +113,17 @@ export type ResetPasswordRequest = {
   confirm_new_password: string;
 };
 
+export type ChangePasswordRequest = {
+  old_password: string;
+  new_password: string;
+  confirm_new_password: string;
+};
+
 export type ResetPasswordResponse = {
+  message: string;
+};
+
+export type ChangePasswordResponse = {
   message: string;
 };
 
@@ -228,6 +238,12 @@ export function toResetPasswordResponse(): ResetPasswordResponse {
   return {
     message:
       "Password has been successfully reset. Please login with your new password.",
+  };
+}
+
+export function toChangePasswordResponse(): ChangePasswordResponse {
+  return {
+    message: "Password has been successfully changed.",
   };
 }
 

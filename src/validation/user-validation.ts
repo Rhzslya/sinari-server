@@ -152,4 +152,17 @@ export class UserValidation {
   static readonly RESTORE = z.object({
     id: z.number().min(1).positive(),
   });
+
+  static readonly CHANGE_PASSWORD = z
+    .object({
+      old_password: strongPassword,
+      new_password: strongPassword,
+      confirm_new_password: z
+        .string()
+        .min(8, "Confirmation password is required"),
+    })
+    .refine((data) => data.new_password === data.confirm_new_password, {
+      message: "Passwords do not match",
+      path: ["confirm_new_password"],
+    });
 }

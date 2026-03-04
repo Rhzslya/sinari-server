@@ -7,6 +7,7 @@ import {
   readLimiterMiddleware,
   writeLimiterMiddleware,
 } from "../middleware/rate-limiter";
+import { ContactController } from "../controller/contact-controller";
 
 export const publicRouter = new Hono();
 
@@ -42,4 +43,9 @@ publicRouter.get(
   "/api/public/products",
   readLimiterMiddleware,
   ProductController.search,
+);
+
+// Contact Public Routes
+publicRouter.post("/api/public/contact-us", writeLimiterMiddleware, (c) =>
+  ContactController.sendContactUsMail(c),
 );

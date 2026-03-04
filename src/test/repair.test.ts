@@ -1233,6 +1233,154 @@ describe("PATCH /api/services/:id", () => {
 
     expect(logs.length).toBe(0);
   });
+
+  it("should not update a service that has been anonymized", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.getAdmin();
+    token = user.token!;
+
+    const service = await ServiceTest.create();
+
+    await prismaClient.service.update({
+      where: { id: service.id },
+      data: { is_anonymized: true },
+    });
+
+    const requestBody: UpdateServiceRequest = {
+      id: service.id,
+      status: "PROCESS",
+      technician_note: "Fixing...",
+    };
+
+    const response = await TestRequest.patch<UpdateServiceRequest>(
+      `/api/services/${service.id}`,
+      requestBody,
+      token,
+    );
+
+    const body = await response.json();
+
+    logger.debug(body);
+
+    expect(response.status).toBe(400);
+    expect(body.errors).toBeDefined();
+  });
+});
+
+describe("PATCH /api/services/:id/anonymize-customer-data", () => {
+  afterEach(async () => {
+    await ServiceLogTest.delete();
+    await ServiceTest.deleteAll();
+    await TechnicianTest.delete();
+    await UserTest.delete();
+  });
+
+  let token = "";
+
+  it("should anonymize a service if user is ADMIN and status is TAKEN", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.getAdmin();
+    token = user.token!;
+
+    const service = await ServiceTest.create();
+
+    await prismaClient.service.update({
+      where: { id: service.id },
+      data: { status: "TAKEN" },
+    });
+
+    const response = await TestRequest.patch(
+      `/api/services/${service.id}/anonymize-customer-data`,
+      {},
+      token,
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(200);
+
+    const checkAnonymized = await prismaClient.service.findUnique({
+      where: { id: service.id },
+    });
+    expect(checkAnonymized?.is_anonymized).toBe(true);
+
+    const logs = await prismaClient.serviceLog.findMany({
+      where: { service_id: service.id, action: "UPDATE_INFO" },
+    });
+    expect(logs.length).toBe(1);
+    expect(logs[0].description).toContain("Customer data anonymized");
+  });
+
+  it("should reject anonymize if service status is active/not TAKEN or CANCELLED", async () => {
+    await UserTest.createAdmin();
+    const user = await UserTest.getAdmin();
+    token = user.token!;
+
+    const service = await ServiceTest.create();
+
+    const response = await TestRequest.patch(
+      `/api/services/${service.id}/anonymize-customer-data`,
+      {},
+      token,
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(400);
+    expect(body.errors).toContain("Cannot anonymize customer data");
+  });
+
+  it("should reject anonymize if user is CUSTOMER (Insufficient Permission)", async () => {
+    await UserTest.create();
+    const user = await UserTest.getCustomer();
+    token = user.token!;
+
+    const service = await ServiceTest.create();
+
+    const response = await TestRequest.patch(
+      `/api/services/${service.id}/anonymize-customer-data`,
+      {},
+      token,
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(403);
+    expect(body.errors).toContain("Insufficient permissions");
+  });
+
+  it("should return 404 if service id does not exist", async () => {
+    await UserTest.createOwner();
+    const user = await UserTest.getOwner();
+    token = user.token!;
+
+    const response = await TestRequest.patch(
+      `/api/services/999999/anonymize-customer-data`,
+      {},
+      token,
+    );
+
+    const body = await response.json();
+    logger.debug(body);
+
+    expect(response.status).toBe(404);
+    expect(body.errors).toBeDefined();
+  });
+
+  it("should reject anonymize if token is invalid", async () => {
+    const service = await ServiceTest.create();
+
+    const response = await TestRequest.patch(
+      `/api/services/${service.id}/anonymize-customer-data`,
+      {},
+      "invalid_token",
+    );
+
+    expect(response.status).toBe(401);
+  });
 });
 
 describe("DELETE /api/services/:id", () => {

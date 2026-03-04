@@ -14,8 +14,10 @@ import { ResponseError } from "../error/response-error";
 import { WhatsappService } from "../lib/whatsapp";
 import type { Pageable } from "../model/page-model";
 import {
+  CustomerDataAnonymization,
   toPublicServiceResponse,
   toServiceResponse,
+  type AnonymizeCustomerDataRequest,
   type CreateServiceRequest,
   type DeleteServiceRequest,
   type DetailedServiceRequest,
@@ -245,6 +247,55 @@ export class ServicesDataService {
     return toServiceResponse(restoredService);
   }
 
+  static async anonymizeCustomerData(
+    user: User,
+    request: AnonymizeCustomerDataRequest,
+  ): Promise<boolean> {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
+      throw new ResponseError(403, "Forbidden: Insufficient permissions");
+    }
+
+    const service = await CheckExist.checkServiceExists({ id: request.id });
+    if (
+      service.status !== ServiceStatus.TAKEN &&
+      service.status !== ServiceStatus.CANCELLED
+    ) {
+      throw new ResponseError(
+        400,
+        "Cannot anonymize customer data. Service is not taken or cancelled.",
+      );
+    }
+
+    if (service.is_anonymized === true) {
+      throw new ResponseError(
+        400,
+        "Cannot anonymize customer data. Service is already anonymized.",
+      );
+    }
+
+    await prismaClient.service.update({
+      where: { id: request.id },
+      data: {
+        customer_name: CustomerDataAnonymization.ANONYMIZED_NAME,
+        phone_number: CustomerDataAnonymization.ANONYMIZED_PHONE,
+        description: null,
+        technician_note: null,
+        is_anonymized: true,
+      },
+    });
+
+    await prismaClient.serviceLog.create({
+      data: {
+        service_id: request.id,
+        user_id: user.id,
+        action: ServiceLogAction.UPDATE_INFO,
+        description: "Customer data anonymized",
+      },
+    });
+
+    return true;
+  }
+
   static async search(
     user: User,
     request: SearchServiceRequest,
@@ -382,6 +433,13 @@ export class ServicesDataService {
     const oldService = await CheckExist.checkServiceExists({
       id: updateRequest.id,
     });
+
+    if (oldService.is_anonymized) {
+      throw new ResponseError(
+        400,
+        "Cannot update a service that has been anonymized.",
+      );
+    }
 
     if (oldService.deleted_at !== null) {
       throw new ResponseError(

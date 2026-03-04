@@ -31,6 +31,10 @@ import {
   type ResendVerificationRequest,
   type CheckUserExistsRequest,
   maskEmail,
+  type ChangePasswordRequest,
+  type MessageResponse,
+  type ChangePasswordResponse,
+  toChangePasswordResponse,
 } from "../model/user-model";
 import { GoogleAuth } from "../utils/google-auth";
 import { UserValidation } from "../validation/user-validation";
@@ -209,6 +213,10 @@ export class UserService {
   }
 
   static async get(user: User): Promise<UserResponse> {
+    if (user.google_id) {
+      return toUserResponseWithToken(user);
+    }
+
     return toUserResponse(user);
   }
 
@@ -935,5 +943,112 @@ export class UserService {
     });
 
     return toResetPasswordResponse();
+  }
+
+  static async changePassword(
+    user: User,
+    request: ChangePasswordRequest,
+  ): Promise<ChangePasswordResponse> {
+    const changePasswordRequest = Validation.validate(
+      UserValidation.CHANGE_PASSWORD,
+      request,
+    );
+
+    const FAIL_KEY = `pwd_fail:${user.id}`;
+    const failedCount = await redis.get<number>(FAIL_KEY);
+
+    if (failedCount && failedCount >= 5) {
+      const ttl = await redis.ttl(FAIL_KEY);
+      throw new ResponseError(
+        429,
+        `Too many failed attempts. Please wait ${Math.ceil(ttl / 60)} minutes before trying again.`,
+      );
+    }
+
+    const existingUser = await prismaClient.user.findUnique({
+      where: {
+        id: user.id,
+      },
+    });
+
+    if (!existingUser) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    if (existingUser.google_id && !existingUser.password) {
+      throw new ResponseError(
+        400,
+        "This account uses Google Login and does not have a password to change.",
+      );
+    }
+
+    if (!existingUser.password) {
+      throw new ResponseError(400, "User does not have a password set.");
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      changePasswordRequest.old_password,
+      existingUser.password,
+    );
+
+    if (!isPasswordValid) {
+      const count = await redis.incr(FAIL_KEY);
+      if (count === 1) {
+        await redis.expire(FAIL_KEY, 15 * 60);
+      }
+
+      const attemptsLeft = 5 - count;
+      if (attemptsLeft === 0) {
+        const ttl = await redis.ttl(FAIL_KEY);
+        throw new ResponseError(
+          429,
+          `Account temporarily locked. Please wait ${ttl} seconds before trying again.`,
+        );
+      }
+      throw new ResponseError(
+        400,
+        `Current password is incorrect. ${attemptsLeft} attempts left.`,
+      );
+    }
+
+    await redis.del(FAIL_KEY);
+
+    const isSameAsOld = await bcrypt.compare(
+      changePasswordRequest.new_password,
+      existingUser.password,
+    );
+
+    if (isSameAsOld) {
+      throw new ResponseError(
+        400,
+        "New password cannot be the same as the current password",
+      );
+    }
+
+    const newPasswordHash = await bcrypt.hash(
+      changePasswordRequest.new_password,
+      10,
+    );
+
+    await prismaClient.user.update({
+      where: {
+        id: existingUser.id,
+      },
+      data: {
+        password: newPasswordHash,
+      },
+    });
+
+    const nowUnixTimestamp = Math.floor(Date.now() / 1000);
+    await redis.set(`session_valid_after:${existingUser.id}`, nowUnixTimestamp);
+
+    if (existingUser.email && existingUser.name) {
+      Mail.sendPasswordChangedNotification(
+        existingUser.email,
+        existingUser.name,
+      ).catch((err) => console.error("Email notification error:", err));
+    }
+
+    return toChangePasswordResponse();
   }
 }
