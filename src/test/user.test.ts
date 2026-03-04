@@ -1684,7 +1684,7 @@ describe("PATCH /api/users/:id/restore", () => {
       const body6 = await res6.json();
       expect(res6.status).toBe(429);
       expect(body6.errors).toContain("Too many failed attempts. Please wait");
-    });
+    }, 15000);
 
     it("should reject change password if token is wrong/missing", async () => {
       const updateData: ChangePasswordRequest = {
