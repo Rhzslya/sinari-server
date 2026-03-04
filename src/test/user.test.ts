@@ -1604,7 +1604,7 @@ describe("PATCH /api/users/:id/restore", () => {
     });
 
     it("should reject and increment fail counter if old password is incorrect", async () => {
-      token = await UserTest.createOwner();
+      token = await UserTest.createAdmin();
 
       const updateData: ChangePasswordRequest = {
         old_password: "@WrongPassword123",
