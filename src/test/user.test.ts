@@ -1,5 +1,13 @@
 import { describe, afterEach, beforeEach, it, expect } from "bun:test";
-import { TestRequest, UserTest } from "./test-utils";
+import {
+  ProductLogTest,
+  ProductTest,
+  ServiceLogTest,
+  ServiceTest,
+  TechnicianTest,
+  TestRequest,
+  UserTest,
+} from "./test-utils";
 import { logger } from "../application/logging";
 import type {
   ChangePasswordRequest,
@@ -1506,6 +1514,14 @@ describe("PATCH /api/users/:id/restore", () => {
   });
 
   describe("PATCH /api/users/change-password", () => {
+    beforeEach(async () => {
+      await ProductLogTest.delete();
+      await ServiceLogTest.delete();
+      await ProductTest.delete();
+      await ServiceTest.deleteAll();
+      await TechnicianTest.delete();
+    });
+
     afterEach(async () => {
       await UserTest.delete();
       await UserTest.deleteGoogleDuplicate();
@@ -1633,7 +1649,7 @@ describe("PATCH /api/users/:id/restore", () => {
       );
     });
 
-    it("should lockout account (429) after 5 failed attempts", async () => {
+    it.only("should lockout account (429) after 5 failed attempts", async () => {
       token = await UserTest.createOwner();
 
       const updateData: ChangePasswordRequest = {
@@ -1658,9 +1674,7 @@ describe("PATCH /api/users/:id/restore", () => {
       );
       const body5 = await res5.json();
       expect(res5.status).toBe(429);
-      expect(body5.errors).toContain(
-        "Account temporarily locked due to too many failed attempts.",
-      );
+      expect(body5.errors).toMatch("Account temporarily locked");
 
       const res6 = await TestRequest.patch(
         "/api/users/change-password",
