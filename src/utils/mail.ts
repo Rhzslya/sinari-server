@@ -30,7 +30,7 @@ export class Mail {
   static async sendVerificationMail(request: VerificationMailRequest) {
     try {
       const { testAccount, transporter } = await this.getTestTransporter();
-      const verificationUrl = `http://localhost:5173/auth/verify?token=${request.token}`;
+      const verificationUrl = `http://sinari.my.id/auth/verify?token=${request.token}`;
 
       const info = await transporter.sendMail({
         from: `"Sinari Cell Admin" <${testAccount.user}>`,
@@ -73,7 +73,7 @@ export class Mail {
   static async sendPasswordResetMail(request: PasswordResetMailRequest) {
     try {
       const { testAccount, transporter } = await this.getTestTransporter();
-      const passwordResetUrl = `http://localhost:5173/auth/reset-password?token=${request.token}`;
+      const passwordResetUrl = `http://sinari.my.id/auth/reset-password?token=${request.token}`;
 
       const info = await transporter.sendMail({
         from: `"Sinari Cell Admin" <${testAccount.user}>`,

@@ -132,7 +132,7 @@ export class ServicesDataService {
       },
     });
 
-    const trackingUrl = `http://localhost:5173/services/track/${service.tracking_token}`;
+    const trackingUrl = `http://sinari.my.id/services/track/${service.tracking_token}`;
     const message = `Halo ${service.customer_name} Your service has been created. Please track it here: ${trackingUrl}`;
 
     await WhatsappService.sendMessage(service.phone_number, message);

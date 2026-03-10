@@ -196,7 +196,7 @@ describe("Store Setting API", () => {
   });
 });
 
-describe.only("GET /api/store-setting/public", () => {
+describe("GET /api/store-setting/public", () => {
   beforeEach(async () => {
     await StoreSettingTest.delete();
   });

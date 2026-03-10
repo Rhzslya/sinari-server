@@ -13,7 +13,7 @@ web.use("*", secureHeaders());
 
 const allowedOrigins = [
   "http://localhost:5173",
-  // "https://sinari.vercel.app" //Your Domain
+  "https://sinari.my.id", //Your Domain
 ];
 
 web.use(
