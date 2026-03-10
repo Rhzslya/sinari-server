@@ -1,6 +1,5 @@
 import z from "zod";
-
-const INDONESIAN_PHONE_REGEX = /^(\+62|62|0)8[1-9][0-9]{6,10}$/;
+import { INDONESIAN_PHONE_REGEX } from "../utils/indonesia-phone-regex";
 
 export class ContactValidation {
   static readonly CONTACT_US = z.object({

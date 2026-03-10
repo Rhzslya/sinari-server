@@ -1,6 +1,5 @@
 import z from "zod";
-
-const INDONESIAN_PHONE_REGEX = /^(\+62|62|0)8[1-9][0-9]{6,10}$/;
+import { INDONESIAN_PHONE_REGEX } from "../utils/indonesia-phone-regex";
 
 export class StoreSettingValidation {
   static readonly UPDATE = z.object({
@@ -38,5 +37,9 @@ export class StoreSettingValidation {
       .string()
       .min(1, "Payment info is required")
       .max(1000, "Text is too long"),
+    store_hours: z
+      .string()
+      .min(1, "Store hours is required")
+      .max(500, "Text is too long"),
   });
 }

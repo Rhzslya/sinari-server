@@ -38,4 +38,18 @@ export class StoreSettingController {
       throw error;
     }
   }
+
+  static async getPublic(c: Context) {
+    try {
+      const request: GetDetailedStoreSettingRequest = {
+        id: 1,
+      };
+
+      const response = await StoreSettingService.getPublic(request);
+
+      return c.json({ data: response });
+    } catch (error) {
+      throw error;
+    }
+  }
 }

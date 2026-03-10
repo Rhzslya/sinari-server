@@ -482,6 +482,7 @@ export class StoreSettingTest {
         store_website: "www.old.com",
         warranty_text: "Garansi lama",
         payment_info: "BCA Lama",
+        store_hours: "Lama",
       },
     });
   }

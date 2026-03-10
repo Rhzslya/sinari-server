@@ -8,6 +8,11 @@ import { prismaClient } from "../application/database";
 import { ResponseError } from "../error/response-error";
 import type { CheckProductExistRequest } from "../model/product-model";
 import type { CheckServiceExistsRequest } from "../model/repair-model";
+import type {
+  CheckTechnicianExistRequest,
+  TechnicianResponse,
+} from "../model/technician-model";
+import type { CheckUserExistsRequest, UserResponse } from "../model/user-model";
 
 export class CheckExist {
   static async checkProductExist(
@@ -48,5 +53,39 @@ export class CheckExist {
     }
 
     return service;
+  }
+
+  static async checkUserExist(
+    request: CheckUserExistsRequest,
+  ): Promise<UserResponse> {
+    const user = await prismaClient.user.findUnique({
+      where: {
+        id: request.id,
+        deleted_at: null,
+      },
+    });
+
+    if (!user) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    return user;
+  }
+
+  static async checkTechnicianExist(
+    request: CheckTechnicianExistRequest,
+  ): Promise<TechnicianResponse> {
+    const technician = await prismaClient.technician.findUnique({
+      where: {
+        id: request.id,
+        deleted_at: null,
+      },
+    });
+
+    if (!technician) {
+      throw new ResponseError(404, "Technician not found");
+    }
+
+    return technician;
   }
 }

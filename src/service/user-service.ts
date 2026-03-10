@@ -32,7 +32,6 @@ import {
   type CheckUserExistsRequest,
   maskEmail,
   type ChangePasswordRequest,
-  type MessageResponse,
   type ChangePasswordResponse,
   toChangePasswordResponse,
 } from "../model/user-model";
@@ -110,11 +109,11 @@ export class UserService {
     });
 
     try {
-      await Mail.sendVerificationMail(
-        user.email!,
-        user.verify_token!,
-        user.name!,
-      );
+      await Mail.sendVerificationMail({
+        email: user.email!,
+        token: user.verify_token!,
+        name: user.name!,
+      });
     } catch (error) {
       console.error(
         `[MAIL ERROR] Failed to send verification to ${user.email}`,
@@ -451,22 +450,6 @@ export class UserService {
     return toUserResponse(result);
   }
 
-  static async checkUserExist(
-    request: CheckUserExistsRequest,
-  ): Promise<UserResponse> {
-    const user = await prismaClient.user.findUnique({
-      where: {
-        id: request.id,
-      },
-    });
-
-    if (!user) {
-      throw new ResponseError(404, "User not found");
-    }
-
-    return user;
-  }
-
   static async removeUser(
     user: User,
     request: DeleteUserRequest,
@@ -558,7 +541,10 @@ export class UserService {
       },
     });
 
-    await Mail.sendRestoredUser(restoredUser.email!, restoredUser.name!);
+    await Mail.sendRestoredUser({
+      email: restoredUser.email!,
+      name: restoredUser.name!,
+    });
 
     return toNotPublicUserResponse(restoredUser, false);
   }
@@ -807,7 +793,11 @@ export class UserService {
       },
     });
 
-    await Mail.sendVerificationMail(user.email!, newVerifyToken, user.name!);
+    await Mail.sendVerificationMail({
+      email: user.email!,
+      token: newVerifyToken,
+      name: user.name!,
+    });
 
     await redis.set(cooldownKey, user.email, { ex: this.COOLDOWN_MS / 1000 });
 
@@ -893,7 +883,11 @@ export class UserService {
       },
     });
 
-    await Mail.sendPasswordResetMail(user.email!, resetToken, user.name!);
+    await Mail.sendPasswordResetMail({
+      email: user.email!,
+      token: resetToken,
+      name: user.name!,
+    });
 
     await redis.set(cooldownKey, user.email!, { ex: this.COOLDOWN_MS / 1000 });
 
@@ -1043,10 +1037,10 @@ export class UserService {
     await redis.set(`session_valid_after:${existingUser.id}`, nowUnixTimestamp);
 
     if (existingUser.email && existingUser.name) {
-      Mail.sendPasswordChangedNotification(
-        existingUser.email,
-        existingUser.name,
-      ).catch((err) => console.error("Email notification error:", err));
+      Mail.sendPasswordChangedNotification({
+        email: existingUser.email,
+        name: existingUser.name,
+      }).catch((err) => console.error("Email notification error:", err));
     }
 
     return toChangePasswordResponse();

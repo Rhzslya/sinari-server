@@ -8,6 +8,7 @@ import {
   writeLimiterMiddleware,
 } from "../middleware/rate-limiter";
 import { ContactController } from "../controller/contact-controller";
+import { StoreSettingController } from "../controller/store-setting-controller";
 
 export const publicRouter = new Hono();
 
@@ -48,4 +49,9 @@ publicRouter.get(
 // Contact Public Routes
 publicRouter.post("/api/public/contact-us", writeLimiterMiddleware, (c) =>
   ContactController.sendContactUsMail(c),
+);
+
+// Store Setting Public Routes
+publicRouter.get("/api/public/store-setting", readLimiterMiddleware, (c) =>
+  StoreSettingController.getPublic(c),
 );

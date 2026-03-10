@@ -11,7 +11,6 @@ import type { Pageable } from "../model/page-model";
 import {
   toListTechnicianResponse,
   toTechnicianResponse,
-  type CheckTechnicianExistRequest,
   type CreateTechnicianRequest,
   type DeleteTechnicianRequest,
   type GetDetailedTechnicianRequest,
@@ -21,6 +20,7 @@ import {
   type TechnicianResponse,
   type UpdateTechnicianRequest,
 } from "../model/technician-model";
+import { CheckExist } from "../utils/check-exist";
 import { isValidFile } from "../utils/cloudinary-guard";
 import { TechnicianValidation } from "../validation/technician-validation";
 import { Validation } from "../validation/validation";
@@ -70,23 +70,6 @@ export class TechnicianService {
     return toTechnicianResponse(technician);
   }
 
-  static async checkTechnicianExist(
-    request: CheckTechnicianExistRequest,
-  ): Promise<TechnicianResponse> {
-    const technician = await prismaClient.technician.findUnique({
-      where: {
-        id: request.id,
-        deleted_at: null,
-      },
-    });
-
-    if (!technician) {
-      throw new ResponseError(404, "Technician not found");
-    }
-
-    return technician;
-  }
-
   static async get(
     user: User,
     request: GetDetailedTechnicianRequest,
@@ -95,7 +78,9 @@ export class TechnicianService {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const technician = await this.checkTechnicianExist({ id: request.id });
+    const technician = await CheckExist.checkTechnicianExist({
+      id: request.id,
+    });
 
     return toTechnicianResponse(technician);
   }
@@ -152,7 +137,7 @@ export class TechnicianService {
       request,
     );
 
-    const oldTechnician = await this.checkTechnicianExist({
+    const oldTechnician = await CheckExist.checkTechnicianExist({
       id: updateRequest.id,
     });
 
@@ -224,7 +209,9 @@ export class TechnicianService {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const technician = await this.checkTechnicianExist({ id: request.id });
+    const technician = await CheckExist.checkTechnicianExist({
+      id: request.id,
+    });
 
     const activeOngoingServices = await prismaClient.service.count({
       where: {

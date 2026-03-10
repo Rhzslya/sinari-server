@@ -1,5 +1,3 @@
-// src/model/whatsapp-model.ts
-
 export type WhatsappConnectionStatus =
   | "connected"
   | "loading_qr"

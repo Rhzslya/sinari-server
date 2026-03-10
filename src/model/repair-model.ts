@@ -44,9 +44,7 @@ export type PublicServiceResponse = {
   model: string;
   customer_name: string;
   status: ServiceStatus;
-  phone_number: string;
   description?: string | null;
-  technician_note?: string | null;
   service_list: {
     id: number;
     name: string;
@@ -191,9 +189,7 @@ export function toPublicServiceResponse(
     brand: service.brand,
     model: service.model,
     customer_name: service.customer_name,
-    phone_number: maskPhoneNumber(service.phone_number),
     description: service.description,
-    technician_note: service.technician_note,
     status: service.status,
     service_list: service.service_list.map((item) => {
       return {

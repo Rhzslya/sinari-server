@@ -10,8 +10,19 @@ export type ContactUsRequest = {
   message: string;
 };
 
-export function toContactUsResponse(
-  data: ContactUsResponse,
-): ContactUsResponse {
-  return data;
-}
+export type VerificationMailRequest = {
+  email: string;
+  name: string;
+  token: string;
+};
+
+export type PasswordResetMailRequest = {
+  email: string;
+  name: string;
+  token: string;
+};
+
+export type UserNotificationRequest = {
+  email: string;
+  name: string;
+};

@@ -36,7 +36,7 @@ const cleanStore = () => {
           console.log(`[WA Fix] ${file} removed.`);
         }
       } catch (e) {
-        // Abaikan jika gagal dihapus
+        // Escape
       }
     });
   }

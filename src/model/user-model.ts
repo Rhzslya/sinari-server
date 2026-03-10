@@ -230,10 +230,6 @@ export function toForgotPasswordResponse(
   };
 }
 
-export function toMessageResponse(message: string): MessageResponse {
-  return { message };
-}
-
 export function toResetPasswordResponse(): ResetPasswordResponse {
   return {
     message:

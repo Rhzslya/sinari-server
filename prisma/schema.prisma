@@ -261,6 +261,7 @@ model StoreSetting {
   store_website   String?  @db.VarChar(100)
   warranty_text   String   @db.Text
   payment_info    String   @db.Text
+  store_hours     String  @db.Text
   updated_at      DateTime @updatedAt
 
   @@map("store_settings")

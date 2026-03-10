@@ -1,13 +1,12 @@
 import z from "zod";
 import { Brand, ServiceStatus } from "../../generated/prisma/enums";
+import { INDONESIAN_PHONE_REGEX } from "../utils/indonesia-phone-regex";
 
 const SERVICE_STATUS_VALUES = Object.values(ServiceStatus) as [
   string,
   ...string[],
 ];
 const BRAND_VALUES = Object.values(Brand) as [string, ...string[]];
-
-const INDONESIAN_PHONE_REGEX = /^(\+62|62|0)8[1-9][0-9]{6,10}$/;
 
 export class RepairValidation {
   static readonly CREATE = z.object({

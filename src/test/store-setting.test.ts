@@ -195,3 +195,42 @@ describe("Store Setting API", () => {
     });
   });
 });
+
+describe.only("GET /api/store-setting/public", () => {
+  beforeEach(async () => {
+    await StoreSettingTest.delete();
+  });
+
+  afterEach(async () => {
+    await StoreSettingTest.delete();
+  });
+
+  it("should successfully get public store settings without auth token", async () => {
+    await StoreSettingTest.create();
+
+    const response = await TestRequest.get("/api/public/store-setting", "");
+    const body = await response.json();
+
+    logger.debug("Get Public Settings:", body);
+
+    expect(response.status).toBe(200);
+
+    expect(body.data.warranty_text).toBeUndefined();
+    expect(body.data.payment_info).toBeUndefined();
+    expect(body.data.id).toBeUndefined();
+    expect(body.data.updated_at).toBeUndefined();
+  });
+
+  it("should return default public settings if database is empty", async () => {
+    const response = await TestRequest.get("/api/public/store-setting", "");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+
+    expect(body.data.store_name).toBe(DEFAULT_STORE_SETTING.STORE_NAME);
+    expect(body.data.store_hours).toBe(DEFAULT_STORE_SETTING.STORE_HOURS);
+
+    expect(body.data.warranty_text).toBeUndefined();
+    expect(body.data.payment_info).toBeUndefined();
+  });
+});

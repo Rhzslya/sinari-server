@@ -7,4 +7,5 @@ export const DEFAULT_STORE_SETTING = {
   WARRANTY_TEXT:
     "1. Garansi 7 hari untuk kerusakan yang sama.\n2. Wajib menunjukan invoice ini saat klaim.",
   PAYMENT_INFO: "BCA: 1234 5678 90 (Sinari)",
+  STORE_HOURS: "Senin - Sabtu: 09.00 - 21.00 WIB\nMinggu: 10.00 - 18.00 WIB",
 } as const;

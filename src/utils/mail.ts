@@ -1,182 +1,192 @@
 import { ResponseError } from "../error/response-error";
 import nodemailer from "nodemailer";
 import {
-  toContactUsResponse,
   type ContactUsRequest,
-  type ContactUsResponse,
+  type PasswordResetMailRequest,
+  type UserNotificationRequest,
+  type VerificationMailRequest,
 } from "../model/mail-model";
 import { ContactValidation } from "../validation/contact-validation";
 import { Validation } from "../validation/validation";
 import { ZodError } from "zod";
 
+const PRIMARY_COLOR = "#ef473a";
+
 export class Mail {
-  static async sendVerificationMail(
-    email: string,
-    token: string,
-    name: string,
-  ) {
+  private static async getTestTransporter() {
+    const testAccount = await nodemailer.createTestAccount();
+    const transporter = nodemailer.createTransport({
+      host: testAccount.smtp.host,
+      port: testAccount.smtp.port,
+      secure: testAccount.smtp.secure,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+    return { testAccount, transporter };
+  }
+
+  static async sendVerificationMail(request: VerificationMailRequest) {
     try {
-      const testAccount = await nodemailer.createTestAccount();
+      const { testAccount, transporter } = await this.getTestTransporter();
+      const verificationUrl = `http://localhost:5173/auth/verify?token=${request.token}`;
 
-      const transporterTest = nodemailer.createTransport({
-        host: testAccount.smtp.host,
-        port: testAccount.smtp.port,
-        secure: testAccount.smtp.secure,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-
-      // const transporter = nodemailer.createTransport({
-      //   service: "gmail",
-      //   auth: {
-      //     user: process.env.MAIL_SENDER,
-      //     pass: process.env.MAIL_PASSWORD,
-      //   },
-      // });
-
-      const verificationUrl = `http://localhost:5173/auth/verify?token=${token}`;
-
-      const info = await transporterTest.sendMail({
+      const info = await transporter.sendMail({
         from: `"Sinari Cell Admin" <${testAccount.user}>`,
-        to: email,
-        subject: "Verify your email address",
+        to: request.email,
+        subject: "Verifikasi Alamat Email Anda",
         html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px dashed red;">
-                <h3 style="color: red;">[THIS IS EMAIL TESTING]</h3>
-                <h2>Halo, ${name}!</h2>
-                <p>Silakan klik tombol di bawah ini untuk verifikasi:</p>
-                <a href="${verificationUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                  Verifikasi Email Saya
-                </a>
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
+          <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; position: relative;">
+            <span style="position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #ef4444; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">TESTING</span>
+            <div style="font-size: 12px; font-weight: bold; color: ${PRIMARY_COLOR}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Aksi Diperlukan</div>
+            <div style="font-size: 20px; font-weight: bold; color: #0f172a;">Verifikasi Email Anda</div>
+          </div>
+          <div style="padding: 24px;">
+            <p style="margin-top: 0; font-size: 16px;">Halo <strong>${request.name}</strong>,</p>
+            <p style="line-height: 1.6;">Terima kasih telah mendaftar di Sinari Cell. Untuk menyelesaikan proses pendaftaran dan mengamankan akun Anda, silakan verifikasi alamat email ini.</p>
+            
+            <div style="margin: 30px 0; text-align: center;">
+              <a href="${verificationUrl}" style="display: inline-block; background-color: ${PRIMARY_COLOR}; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">
+                 Verifikasi Email Saya
+              </a>
             </div>
+            
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 0;">
+              Jika tombol di atas tidak berfungsi, salin dan tempel tautan berikut ke browser Anda:<br>
+              <a href="${verificationUrl}" style="color: ${PRIMARY_COLOR}; word-break: break-all;">${verificationUrl}</a>
+            </p>
+          </div>
+        </div>
         `,
       });
 
-      console.log("Message sent: %s", info.messageId);
-
-      console.log("Email sent to %s. MessageId: %s", email, info.messageId);
-
-      const previewUrl = nodemailer.getTestMessageUrl(info);
-
-      console.log("Preview URL: %s", previewUrl);
+      console.log("Verification Email sent. MessageId: %s", info.messageId);
+      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
     } catch (error) {
+      console.error("[MAIL ERROR DETAILS]:", error);
       throw new ResponseError(500, "Failed to send verification mail");
     }
   }
 
-  static async sendPasswordResetMail(
-    email: string,
-    token: string,
-    name: string,
-  ) {
-    const testAccount = await nodemailer.createTestAccount();
-
-    const transporterTest = nodemailer.createTransport({
-      host: testAccount.smtp.host,
-      port: testAccount.smtp.port,
-      secure: testAccount.smtp.secure,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-
-    const passwordResetUrl = `http://localhost:5173/auth/reset-password?token=${token}`;
-
-    const info = await transporterTest.sendMail({
-      from: `"Sinari Cell Admin" <${testAccount.user}>`,
-      to: email,
-      subject: "Reset your password",
-      html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px dashed red;">
-                <h3 style="color: red;">[THIS IS EMAIL TESTING]</h3>
-                <h2>Halo, ${name}!</h2>
-                <p>Silakan klik tombol di bawah ini untuk mengatur ulang password:</p>
-                <a href="${passwordResetUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                  Reset Password
-                </a>
-            </div>
-        `,
-    });
-
-    console.log("Message sent: %s", info.messageId);
-
-    console.log("Email sent to %s. MessageId: %s", email, info.messageId);
-
-    const previewUrl = nodemailer.getTestMessageUrl(info);
-
-    console.log("Preview URL: %s", previewUrl);
-  }
-
-  static async sendRestoredUser(email: string, name: string) {
-    const testAccount = await nodemailer.createTestAccount();
-
-    const transporterTest = nodemailer.createTransport({
-      host: testAccount.smtp.host,
-      port: testAccount.smtp.port,
-      secure: testAccount.smtp.secure,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-
-    const info = await transporterTest.sendMail({
-      from: `"Sinari Cell Admin" <${testAccount.user}>`,
-      to: email,
-      subject: "Account Restored",
-      html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px dashed red;">
-                <h3 style="color: red;">[THIS IS EMAIL TESTING]</h3>
-                <h2>Halo, ${name}!</h2>
-                <p>Halo, Akun anda telah dikembalikan, sekarang anda dapat masuk ke akun anda.</p>
-            </div>
-        `,
-    });
-
-    console.log("Message sent: %s", info.messageId);
-
-    console.log("Email sent to %s. MessageId: %s", email, info.messageId);
-  }
-
-  // Tambahkan di dalam class Mail
-
-  static async sendPasswordChangedNotification(email: string, name: string) {
+  static async sendPasswordResetMail(request: PasswordResetMailRequest) {
     try {
-      const testAccount = await nodemailer.createTestAccount();
+      const { testAccount, transporter } = await this.getTestTransporter();
+      const passwordResetUrl = `http://localhost:5173/auth/reset-password?token=${request.token}`;
 
-      const transporterTest = nodemailer.createTransport({
-        host: testAccount.smtp.host,
-        port: testAccount.smtp.port,
-        secure: testAccount.smtp.secure,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-
-      const info = await transporterTest.sendMail({
-        from: `"Sinari Cell Security" <${testAccount.user}>`,
-        to: email,
-        subject: "Pemberitahuan Keamanan: Kata Sandi Anda Diubah",
+      const info = await transporter.sendMail({
+        from: `"Sinari Cell Admin" <${testAccount.user}>`,
+        to: request.email,
+        subject: "Permintaan Reset Kata Sandi",
         html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px dashed red;">
-                <h3 style="color: red;">[THIS IS EMAIL TESTING]</h3>
-                <h2>Halo, ${name}!</h2>
-                <p>Kata sandi untuk akun Sinari Cell Anda baru saja diubah.</p>
-                <p><strong>Jika ini adalah Anda:</strong> Anda bisa mengabaikan email ini.</p>
-                <p style="color: red;"><strong>Jika Anda tidak melakukan perubahan ini:</strong> Segera lakukan reset kata sandi atau hubungi administrator karena akun Anda mungkin disalahgunakan.</p>
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
+          <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; position: relative;">
+            <span style="position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #ef4444; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">TESTING</span>
+            <div style="font-size: 12px; font-weight: bold; color: ${PRIMARY_COLOR}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Keamanan Akun</div>
+            <div style="font-size: 20px; font-weight: bold; color: #0f172a;">Reset Kata Sandi</div>
+          </div>
+          <div style="padding: 24px;">
+            <p style="margin-top: 0; font-size: 16px;">Halo <strong>${request.name}</strong>,</p>
+            <p style="line-height: 1.6;">Kami menerima permintaan untuk mereset kata sandi akun Sinari Cell Anda. Jika Anda tidak merasa melakukan permintaan ini, Anda bisa mengabaikan email ini.</p>
+            
+            <div style="margin: 30px 0; text-align: center;">
+              <a href="${passwordResetUrl}" style="display: inline-block; background-color: ${PRIMARY_COLOR}; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">
+                 Atur Ulang Kata Sandi
+              </a>
             </div>
+            
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 0;">
+              Tautan ini hanya berlaku untuk waktu yang terbatas. Jika tautan kedaluwarsa, silakan minta reset kata sandi baru.
+            </p>
+          </div>
+        </div>
         `,
       });
 
-      console.log(
-        "Security Email sent to %s. MessageId: %s",
-        email,
-        info.messageId,
-      );
+      console.log("Password Reset Email sent. MessageId: %s", info.messageId);
+      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+    } catch (error) {
+      console.error("[MAIL ERROR DETAILS]:", error);
+      throw new ResponseError(500, "Failed to send password reset mail");
+    }
+  }
+
+  static async sendRestoredUser(request: UserNotificationRequest) {
+    try {
+      const { testAccount, transporter } = await this.getTestTransporter();
+
+      const info = await transporter.sendMail({
+        from: `"Sinari Cell Admin" <${testAccount.user}>`,
+        to: request.email,
+        subject: "Pemberitahuan: Akun Anda Telah Dipulihkan",
+        html: `
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
+          <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; position: relative;">
+            <span style="position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #ef4444; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">TESTING</span>
+            <div style="font-size: 12px; font-weight: bold; color: ${PRIMARY_COLOR}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Informasi Akun</div>
+            <div style="font-size: 20px; font-weight: bold; color: #0f172a;">Akun Berhasil Dipulihkan</div>
+          </div>
+          <div style="padding: 24px;">
+            <p style="margin-top: 0; font-size: 16px;">Halo <strong>${request.name}</strong>,</p>
+            <p style="line-height: 1.6;">Kabar baik! Akun Sinari Cell Anda telah berhasil dikembalikan oleh administrator kami. Anda sekarang sudah dapat mengakses layanan kami seperti biasa.</p>
+            
+            <div style="margin: 30px 0; text-align: center;">
+              <a href="http://localhost:5173/auth/login" style="display: inline-block; background-color: ${PRIMARY_COLOR}; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">
+                 Masuk ke Akun Sekarang
+              </a>
+            </div>
+            
+            <p style="font-size: 14px; color: #334155; line-height: 1.5; margin-bottom: 0;">
+              Selamat datang kembali di Sinari Cell!
+            </p>
+          </div>
+        </div>
+        `,
+      });
+
+      console.log("Restore User Email sent. MessageId: %s", info.messageId);
+    } catch (error) {
+      console.error("Failed to send restored user mail:", error);
+    }
+  }
+
+  static async sendPasswordChangedNotification(
+    request: UserNotificationRequest,
+  ) {
+    try {
+      const { testAccount, transporter } = await this.getTestTransporter();
+
+      const info = await transporter.sendMail({
+        from: `"Sinari Cell Security" <${testAccount.user}>`,
+        to: request.email,
+        subject: "Peringatan Keamanan: Kata Sandi Diubah",
+        html: `
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
+          <div style="background-color: #fef2f2; padding: 20px 24px; border-bottom: 1px solid #fecaca; position: relative;">
+            <span style="position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #ef4444; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">TESTING</span>
+            <div style="font-size: 12px; font-weight: bold; color: #ef4444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Peringatan Keamanan</div>
+            <div style="font-size: 20px; font-weight: bold; color: #7f1d1d;">Perubahan Kata Sandi</div>
+          </div>
+          <div style="padding: 24px;">
+            <p style="margin-top: 0; font-size: 16px;">Halo <strong>${request.name}</strong>,</p>
+            <p style="line-height: 1.6;">Kami mendeteksi bahwa kata sandi untuk akun Sinari Cell Anda baru saja diubah.</p>
+            
+            <div style="margin-top: 24px; background-color: #f1f5f9; padding: 16px; border-radius: 6px; border-left: 4px solid #64748b;">
+              <p style="margin: 0 0 10px 0; font-size: 14px;"><strong>Apakah ini Anda?</strong></p>
+              <p style="margin: 0; font-size: 14px; color: #475569;">Jika Anda baru saja mengubah kata sandi, tidak ada tindakan lebih lanjut yang perlu dilakukan. Anda dapat mengabaikan pesan ini.</p>
+            </div>
+
+            <div style="margin-top: 16px; background-color: #fef2f2; padding: 16px; border-radius: 6px; border-left: 4px solid #ef4444;">
+              <p style="margin: 0 0 10px 0; font-size: 14px; color: #991b1b;"><strong>Jika ini bukan Anda:</strong></p>
+              <p style="margin: 0; font-size: 14px; color: #991b1b;">Seseorang mungkin telah mengakses akun Anda tanpa izin. Segera lakukan pemulihan akun atau hubungi admin.</p>
+            </div>
+          </div>
+        </div>
+        `,
+      });
+
+      console.log("Security Email sent. MessageId: %s", info.messageId);
       console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
     } catch (error) {
       console.error("Failed to send password change notification mail:", error);
@@ -189,20 +199,11 @@ export class Mail {
         ContactValidation.CONTACT_US,
         request,
       );
-      const testAccount = await nodemailer.createTestAccount();
-      const transporterTest = nodemailer.createTransport({
-        host: testAccount.smtp.host,
-        port: testAccount.smtp.port,
-        secure: testAccount.smtp.secure,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
+      const { testAccount, transporter } = await this.getTestTransporter();
 
       const adminEmail = "sinaricell817@gmail.com";
 
-      const info = await transporterTest.sendMail({
+      const info = await transporter.sendMail({
         from: `"Web Sinari Cell" <${testAccount.user}>`,
         to: adminEmail,
         replyTo: contactUsRequest.email,
@@ -210,7 +211,7 @@ export class Mail {
         html: `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
       <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0;">
-        <div style="font-size: 12px; font-weight: bold; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Pesan Masuk Baru</div>
+        <div style="font-size: 12px; font-weight: bold; color: ${PRIMARY_COLOR}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Pesan Masuk Baru</div>
         <div style="font-size: 20px; font-weight: bold; color: #0f172a;">Konsultasi Web Sinari Cell</div>
       </div>
 
@@ -222,7 +223,7 @@ export class Mail {
           </tr>
           <tr>
             <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Alamat Email</td>
-            <td style="padding: 8px 0; font-weight: 600;">: <a href="mailto:${contactUsRequest.email}" style="color: #3b82f6; text-decoration: none;">${contactUsRequest.email}</a></td>
+            <td style="padding: 8px 0; font-weight: 600;">: <a href="mailto:${contactUsRequest.email}" style="color: ${PRIMARY_COLOR}; text-decoration: none;">${contactUsRequest.email}</a></td>
           </tr>
           <tr>
             <td style="padding: 8px 0; color: #64748b; font-weight: 500;">No. WhatsApp</td>
@@ -234,7 +235,7 @@ export class Mail {
           </tr>
         </table>
 
-        <div style="margin-top: 24px; background-color: #f1f5f9; padding: 16px; border-radius: 6px; border-left: 4px solid #3b82f6;">
+        <div style="margin-top: 24px; background-color: #f1f5f9; padding: 16px; border-radius: 6px; border-left: 4px solid ${PRIMARY_COLOR};">
           <div style="font-size: 12px; color: #64748b; margin-bottom: 8px; font-weight: 500;">ISI PESAN:</div>
           <p style="margin: 0; font-size: 15px; line-height: 1.6; white-space: pre-wrap; color: #334155;">${contactUsRequest.message}</p>
         </div>
@@ -252,7 +253,7 @@ export class Mail {
               </td>
               <td style="padding: 5px; width: 50%; text-align: center;">
                 <a href="mailto:${contactUsRequest.email}?subject=Balasan%20Tim%20Sinari%20Cell%3A%20${encodeURIComponent(contactUsRequest.subject)}&body=Halo%20${encodeURIComponent(contactUsRequest.name)}%2C%0A%0ATerima%20kasih%20telah%20menghubungi%20Sinari%20Cell." 
-                   style="display: block; background-color: #3b82f6; color: #ffffff; padding: 12px 10px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px;">
+                   style="display: block; background-color: ${PRIMARY_COLOR}; color: #ffffff; padding: 12px 10px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px;">
                    📧 Balas via Email
                 </a>
               </td>

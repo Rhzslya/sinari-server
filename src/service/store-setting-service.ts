@@ -3,9 +3,12 @@ import { prismaClient } from "../application/database";
 import { DEFAULT_STORE_SETTING } from "../config/store-setting";
 import { ResponseError } from "../error/response-error";
 import {
+  toStoreSettingPublicResponse,
   toStoreSettingResponse,
   type CheckStoreSettingExistRequest,
+  type GetDetailedStoreSettingPublicRequest,
   type GetDetailedStoreSettingRequest,
+  type StoreSettingPublicResponse,
   type StoreSettingResponse,
   type UpdateStoreSettingRequest,
 } from "../model/store-setting-model";
@@ -52,6 +55,7 @@ export class StoreSettingService {
         store_website: updateRequest.store_website,
         warranty_text: updateRequest.warranty_text,
         payment_info: updateRequest.payment_info,
+        store_hours: updateRequest.store_hours,
       },
       create: {
         store_name:
@@ -68,6 +72,8 @@ export class StoreSettingService {
           updateRequest.warranty_text || DEFAULT_STORE_SETTING.WARRANTY_TEXT,
         payment_info:
           updateRequest.payment_info || DEFAULT_STORE_SETTING.PAYMENT_INFO,
+        store_hours:
+          updateRequest.store_hours || DEFAULT_STORE_SETTING.STORE_HOURS,
       },
     });
 
@@ -85,6 +91,7 @@ export class StoreSettingService {
     const setting = await prismaClient.storeSetting.findUnique({
       where: { id: request.id },
     });
+
     if (!setting) {
       return {
         id: 1,
@@ -95,10 +102,32 @@ export class StoreSettingService {
         store_website: DEFAULT_STORE_SETTING.STORE_WEBSITE,
         warranty_text: DEFAULT_STORE_SETTING.WARRANTY_TEXT,
         payment_info: DEFAULT_STORE_SETTING.PAYMENT_INFO,
+        store_hours: DEFAULT_STORE_SETTING.STORE_HOURS,
         updated_at: new Date().toISOString(),
       } as StoreSettingResponse;
     }
 
     return toStoreSettingResponse(setting);
+  }
+
+  static async getPublic(
+    request: GetDetailedStoreSettingPublicRequest,
+  ): Promise<StoreSettingPublicResponse> {
+    const setting = await prismaClient.storeSetting.findUnique({
+      where: { id: request.id },
+    });
+
+    if (!setting) {
+      return {
+        store_name: DEFAULT_STORE_SETTING.STORE_NAME,
+        store_address: DEFAULT_STORE_SETTING.STORE_ADDRESS,
+        store_phone: DEFAULT_STORE_SETTING.STORE_PHONE,
+        store_email: DEFAULT_STORE_SETTING.STORE_EMAIL,
+        store_website: DEFAULT_STORE_SETTING.STORE_WEBSITE,
+        store_hours: DEFAULT_STORE_SETTING.STORE_HOURS,
+      } as StoreSettingPublicResponse;
+    }
+
+    return toStoreSettingPublicResponse(setting);
   }
 }

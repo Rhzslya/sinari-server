@@ -327,6 +327,7 @@ export class ServicesDataService {
         OR: [
           { customer_name: { contains: searchRequest.customer_name } },
           { model: { contains: searchRequest.customer_name } },
+          { service_id: { contains: searchRequest.customer_name } },
           {
             technician: {
               name: { contains: searchRequest.customer_name },
