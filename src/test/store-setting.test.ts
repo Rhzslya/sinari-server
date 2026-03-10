@@ -28,6 +28,7 @@ describe("Store Setting API", () => {
         store_website: "https://sinaricell.com",
         warranty_text: "Garansi 30 Hari",
         payment_info: "Mandiri: 12345678",
+        store_hours: "Mo-Fr: 09.00 - 21.00\nSab: Tergantung",
       };
 
       const response = await TestRequest.patch(
@@ -62,6 +63,7 @@ describe("Store Setting API", () => {
         store_website: "",
         warranty_text: "Garansi Update",
         payment_info: "BCA Update",
+        store_hours: "Mo-Fr: 09.00 - 21.00\nSab: Tergantung",
       };
 
       const response = await TestRequest.patch(
