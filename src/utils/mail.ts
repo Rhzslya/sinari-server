@@ -12,34 +12,80 @@ import { ZodError } from "zod";
 
 const PRIMARY_COLOR = "#ef473a";
 
+interface NodemailerCustomError extends Error {
+  responseCode?: number;
+  code?: string;
+}
+
 export class Mail {
-  private static async getTestTransporter() {
-    const testAccount = await nodemailer.createTestAccount();
-    const transporter = nodemailer.createTransport({
-      host: testAccount.smtp.host,
-      port: testAccount.smtp.port,
-      secure: testAccount.smtp.secure,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-    return { testAccount, transporter };
+  //Test email
+  // private static async getTestTransporter() {
+  //   const testAccount = await nodemailer.createTestAccount();
+  //   const transporter = nodemailer.createTransport({
+  //     host: testAccount.smtp.host,
+  //     port: testAccount.smtp.port,
+  //     secure: testAccount.smtp.secure,
+  //     auth: {
+  //       user: testAccount.user,
+  //       pass: testAccount.pass,
+  //     },
+  //   });
+  //   return { testAccount, transporter };
+  // }
+
+  private static transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT) || 465,
+    secure: true,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  private static handleMailError(
+    error: unknown,
+    defaultMessage: string,
+  ): never {
+    if (error instanceof Error) {
+      const mailError = error as NodemailerCustomError;
+      console.error("[MAIL ERROR DETAILS]:", mailError.message);
+
+      if (mailError.responseCode === 550 || mailError.code === "EENVELOPE") {
+        throw new ResponseError(
+          400,
+          "Invalid or unreachable email address. Please verify your input.",
+        );
+      }
+
+      if (mailError.responseCode === 452) {
+        throw new ResponseError(
+          400,
+          "The destination email inbox is full. Please use another email address.",
+        );
+      }
+    } else {
+      console.error("[MAIL ERROR DETAILS]:", error);
+    }
+
+    throw new ResponseError(500, defaultMessage);
+  }
+
+  private static getSenderInfo(name: string = "Sinari Cell") {
+    return `"${name}" <${process.env.SMTP_USER}>`;
   }
 
   static async sendVerificationMail(request: VerificationMailRequest) {
     try {
-      const { testAccount, transporter } = await this.getTestTransporter();
-      const verificationUrl = `http://sinari.my.id/auth/verify?token=${request.token}`;
+      const verificationUrl = `https://sinari.my.id/auth/verify?token=${request.token}`;
 
-      const info = await transporter.sendMail({
-        from: `"Sinari Cell Admin" <${testAccount.user}>`,
+      await this.transporter.sendMail({
+        from: this.getSenderInfo(),
         to: request.email,
-        subject: "Verifikasi Alamat Email Anda",
+        subject: "Verifikasi Alamat Email Anda - Sinari Cell",
         html: `
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
-          <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; position: relative;">
-            <span style="position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #ef4444; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">TESTING</span>
+          <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0;">
             <div style="font-size: 12px; font-weight: bold; color: ${PRIMARY_COLOR}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Aksi Diperlukan</div>
             <div style="font-size: 20px; font-weight: bold; color: #0f172a;">Verifikasi Email Anda</div>
           </div>
@@ -62,27 +108,23 @@ export class Mail {
         `,
       });
 
-      console.log("Verification Email sent. MessageId: %s", info.messageId);
-      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+      console.log("Verification Email sent to: %s", request.email);
     } catch (error) {
-      console.error("[MAIL ERROR DETAILS]:", error);
-      throw new ResponseError(500, "Failed to send verification mail");
+      this.handleMailError(error, "Failed to send verification mail");
     }
   }
 
   static async sendPasswordResetMail(request: PasswordResetMailRequest) {
     try {
-      const { testAccount, transporter } = await this.getTestTransporter();
-      const passwordResetUrl = `http://sinari.my.id/auth/reset-password?token=${request.token}`;
+      const passwordResetUrl = `https://sinari.my.id/auth/reset-password?token=${request.token}`;
 
-      const info = await transporter.sendMail({
-        from: `"Sinari Cell Admin" <${testAccount.user}>`,
+      await this.transporter.sendMail({
+        from: this.getSenderInfo("Sinari Cell Security"),
         to: request.email,
-        subject: "Permintaan Reset Kata Sandi",
+        subject: "Permintaan Reset Kata Sandi - Sinari Cell",
         html: `
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
-          <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; position: relative;">
-            <span style="position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #ef4444; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">TESTING</span>
+          <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0;">
             <div style="font-size: 12px; font-weight: bold; color: ${PRIMARY_COLOR}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Keamanan Akun</div>
             <div style="font-size: 20px; font-weight: bold; color: #0f172a;">Reset Kata Sandi</div>
           </div>
@@ -104,26 +146,21 @@ export class Mail {
         `,
       });
 
-      console.log("Password Reset Email sent. MessageId: %s", info.messageId);
-      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+      console.log("Password Reset Email sent to: %s", request.email);
     } catch (error) {
-      console.error("[MAIL ERROR DETAILS]:", error);
-      throw new ResponseError(500, "Failed to send password reset mail");
+      this.handleMailError(error, "Failed to send password reset mail");
     }
   }
 
   static async sendRestoredUser(request: UserNotificationRequest) {
     try {
-      const { testAccount, transporter } = await this.getTestTransporter();
-
-      const info = await transporter.sendMail({
-        from: `"Sinari Cell Admin" <${testAccount.user}>`,
+      await this.transporter.sendMail({
+        from: this.getSenderInfo(),
         to: request.email,
         subject: "Pemberitahuan: Akun Anda Telah Dipulihkan",
         html: `
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
-          <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; position: relative;">
-            <span style="position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #ef4444; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">TESTING</span>
+          <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0;">
             <div style="font-size: 12px; font-weight: bold; color: ${PRIMARY_COLOR}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Informasi Akun</div>
             <div style="font-size: 20px; font-weight: bold; color: #0f172a;">Akun Berhasil Dipulihkan</div>
           </div>
@@ -132,7 +169,7 @@ export class Mail {
             <p style="line-height: 1.6;">Kabar baik! Akun Sinari Cell Anda telah berhasil dikembalikan oleh administrator kami. Anda sekarang sudah dapat mengakses layanan kami seperti biasa.</p>
             
             <div style="margin: 30px 0; text-align: center;">
-              <a href="http://localhost:5173/auth/login" style="display: inline-block; background-color: ${PRIMARY_COLOR}; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">
+              <a href="https://sinari.my.id/auth/login" style="display: inline-block; background-color: ${PRIMARY_COLOR}; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">
                  Masuk ke Akun Sekarang
               </a>
             </div>
@@ -145,9 +182,19 @@ export class Mail {
         `,
       });
 
-      console.log("Restore User Email sent. MessageId: %s", info.messageId);
+      console.log("Restore User Email sent to: %s", request.email);
     } catch (error) {
-      console.error("Failed to send restored user mail:", error);
+      if (error instanceof Error) {
+        console.error(
+          "[MAIL WARNING] Failed to send restored user mail:",
+          error.message,
+        );
+      } else {
+        console.error(
+          "[MAIL WARNING] Failed to send restored user mail:",
+          error,
+        );
+      }
     }
   }
 
@@ -155,16 +202,13 @@ export class Mail {
     request: UserNotificationRequest,
   ) {
     try {
-      const { testAccount, transporter } = await this.getTestTransporter();
-
-      const info = await transporter.sendMail({
-        from: `"Sinari Cell Security" <${testAccount.user}>`,
+      await this.transporter.sendMail({
+        from: this.getSenderInfo("Sinari Cell Security"),
         to: request.email,
         subject: "Peringatan Keamanan: Kata Sandi Diubah",
         html: `
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
-          <div style="background-color: #fef2f2; padding: 20px 24px; border-bottom: 1px solid #fecaca; position: relative;">
-            <span style="position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #ef4444; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">TESTING</span>
+          <div style="background-color: #fef2f2; padding: 20px 24px; border-bottom: 1px solid #fecaca;">
             <div style="font-size: 12px; font-weight: bold; color: #ef4444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Peringatan Keamanan</div>
             <div style="font-size: 20px; font-weight: bold; color: #7f1d1d;">Perubahan Kata Sandi</div>
           </div>
@@ -186,10 +230,19 @@ export class Mail {
         `,
       });
 
-      console.log("Security Email sent. MessageId: %s", info.messageId);
-      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+      console.log("Security Email sent to: %s", request.email);
     } catch (error) {
-      console.error("Failed to send password change notification mail:", error);
+      if (error instanceof Error) {
+        console.error(
+          "[MAIL WARNING] Failed to send password change notification mail:",
+          error.message,
+        );
+      } else {
+        console.error(
+          "[MAIL WARNING] Failed to send password change notification mail:",
+          error,
+        );
+      }
     }
   }
 
@@ -199,80 +252,77 @@ export class Mail {
         ContactValidation.CONTACT_US,
         request,
       );
-      const { testAccount, transporter } = await this.getTestTransporter();
 
-      const adminEmail = "sinaricell817@gmail.com";
+      const adminEmail = process.env.SMTP_USER;
 
-      const info = await transporter.sendMail({
-        from: `"Web Sinari Cell" <${testAccount.user}>`,
+      await this.transporter.sendMail({
+        from: this.getSenderInfo("Web Sinari Cell System"),
         to: adminEmail,
         replyTo: contactUsRequest.email,
         subject: `[Pesan Baru] ${contactUsRequest.subject}`,
         html: `
-    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
-      <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0;">
-        <div style="font-size: 12px; font-weight: bold; color: ${PRIMARY_COLOR}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Pesan Masuk Baru</div>
-        <div style="font-size: 20px; font-weight: bold; color: #0f172a;">Konsultasi Web Sinari Cell</div>
-      </div>
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
+          <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0;">
+            <div style="font-size: 12px; font-weight: bold; color: ${PRIMARY_COLOR}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Pesan Masuk Baru</div>
+            <div style="font-size: 20px; font-weight: bold; color: #0f172a;">Konsultasi Web Sinari Cell</div>
+          </div>
 
-      <div style="padding: 24px;">
-        <table role="presentation" style="width: 100%; border-collapse: collapse; font-size: 14px;">
-          <tr>
-            <td style="padding: 8px 0; width: 120px; color: #64748b; font-weight: 500;">Nama Lengkap</td>
-            <td style="padding: 8px 0; font-weight: 600; color: #0f172a;">: ${contactUsRequest.name}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Alamat Email</td>
-            <td style="padding: 8px 0; font-weight: 600;">: <a href="mailto:${contactUsRequest.email}" style="color: ${PRIMARY_COLOR}; text-decoration: none;">${contactUsRequest.email}</a></td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #64748b; font-weight: 500;">No. WhatsApp</td>
-            <td style="padding: 8px 0; font-weight: 600;">: <span style="color: #10b981;">${contactUsRequest.phone_number}</span></td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Subjek Pesan</td>
-            <td style="padding: 8px 0; font-weight: 600; color: #0f172a;">: ${contactUsRequest.subject}</td>
-          </tr>
-        </table>
+          <div style="padding: 24px;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <tr>
+                <td style="padding: 8px 0; width: 120px; color: #64748b; font-weight: 500;">Nama Lengkap</td>
+                <td style="padding: 8px 0; font-weight: 600; color: #0f172a;">: ${contactUsRequest.name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Alamat Email</td>
+                <td style="padding: 8px 0; font-weight: 600;">: <a href="mailto:${contactUsRequest.email}" style="color: ${PRIMARY_COLOR}; text-decoration: none;">${contactUsRequest.email}</a></td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 500;">No. WhatsApp</td>
+                <td style="padding: 8px 0; font-weight: 600;">: <span style="color: #10b981;">${contactUsRequest.phone_number}</span></td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Subjek Pesan</td>
+                <td style="padding: 8px 0; font-weight: 600; color: #0f172a;">: ${contactUsRequest.subject}</td>
+              </tr>
+            </table>
 
-        <div style="margin-top: 24px; background-color: #f1f5f9; padding: 16px; border-radius: 6px; border-left: 4px solid ${PRIMARY_COLOR};">
-          <div style="font-size: 12px; color: #64748b; margin-bottom: 8px; font-weight: 500;">ISI PESAN:</div>
-          <p style="margin: 0; font-size: 15px; line-height: 1.6; white-space: pre-wrap; color: #334155;">${contactUsRequest.message}</p>
+            <div style="margin-top: 24px; background-color: #f1f5f9; padding: 16px; border-radius: 6px; border-left: 4px solid ${PRIMARY_COLOR};">
+              <div style="font-size: 12px; color: #64748b; margin-bottom: 8px; font-weight: 500;">ISI PESAN:</div>
+              <p style="margin: 0; font-size: 15px; line-height: 1.6; white-space: pre-wrap; color: #334155;">${contactUsRequest.message}</p>
+            </div>
+
+            <div style="margin-top: 30px; border-top: 1px dashed #cbd5e1; padding-top: 20px;">
+              <div style="font-size: 12px; color: #64748b; margin-bottom: 12px; font-weight: bold; text-align: center;">TINDAKAN CEPAT (BALAS PESAN):</div>
+              
+              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 5px; width: 50%; text-align: center;">
+                    <a href="https://wa.me/${contactUsRequest.phone_number}?text=Halo%20Kak%20${encodeURIComponent(contactUsRequest.name)}!%20%F0%9F%91%8B%0A%0ATerima%20kasih%20telah%20menghubungi%20Sinari%20Cell.%20Terkait%20kendala%20*${encodeURIComponent(contactUsRequest.subject)}*%20yang%20Kakak%20tanyakan%20di%20website%20kami%2C%20berikut%20adalah%20informasinya%3A%0A%0A..." 
+                      style="display: block; background-color: #10b981; color: #ffffff; padding: 12px 10px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px;">
+                      Balas via WhatsApp
+                    </a>
+                  </td>
+                  <td style="padding: 5px; width: 50%; text-align: center;">
+                    <a href="mailto:${contactUsRequest.email}?subject=Balasan%20Tim%20Sinari%20Cell%3A%20${encodeURIComponent(contactUsRequest.subject)}&body=Halo%20${encodeURIComponent(contactUsRequest.name)}%2C%0A%0ATerima%20kasih%20telah%20menghubungi%20Sinari%20Cell." 
+                      style="display: block; background-color: ${PRIMARY_COLOR}; color: #ffffff; padding: 12px 10px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px;">
+                      Balas via Email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </div>
         </div>
-
-        <div style="margin-top: 30px; border-top: 1px dashed #cbd5e1; padding-top: 20px;">
-          <div style="font-size: 12px; color: #64748b; margin-bottom: 12px; font-weight: bold; text-align: center;">TINDAKAN CEPAT (BALAS PESAN):</div>
-          
-          <table role="presentation" style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 5px; width: 50%; text-align: center;">
-                <a href="https://wa.me/${contactUsRequest.phone_number}?text=Halo%20Kak%20${encodeURIComponent(contactUsRequest.name)}!%20%F0%9F%91%8B%0A%0ATerima%20kasih%20telah%20menghubungi%20Sinari%20Cell.%20Terkait%20kendala%20*${encodeURIComponent(contactUsRequest.subject)}*%20yang%20Kakak%20tanyakan%20di%20website%20kami%2C%20berikut%20adalah%20informasinya%3A%0A%0A..." 
-                   style="display: block; background-color: #10b981; color: #ffffff; padding: 12px 10px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px;">
-                   💬 Balas via WhatsApp
-                </a>
-              </td>
-              <td style="padding: 5px; width: 50%; text-align: center;">
-                <a href="mailto:${contactUsRequest.email}?subject=Balasan%20Tim%20Sinari%20Cell%3A%20${encodeURIComponent(contactUsRequest.subject)}&body=Halo%20${encodeURIComponent(contactUsRequest.name)}%2C%0A%0ATerima%20kasih%20telah%20menghubungi%20Sinari%20Cell." 
-                   style="display: block; background-color: ${PRIMARY_COLOR}; color: #ffffff; padding: 12px 10px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px;">
-                   📧 Balas via Email
-                </a>
-              </td>
-            </tr>
-          </table>
-        </div>
-      </div>
-    </div>
-  `,
+        `,
       });
 
-      console.log("Contact Email sent. MessageId: %s", info.messageId);
-      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+      console.log("Contact Email sent to Support inbox");
     } catch (error) {
       if (error instanceof ZodError) {
         throw error;
       }
-      console.error("Failed to send contact us mail:", error);
-      throw new ResponseError(500, "Failed to send contact message");
+      this.handleMailError(error, "Failed to send contact message");
     }
   }
 }
