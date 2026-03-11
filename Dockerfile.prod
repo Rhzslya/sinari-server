@@ -1,0 +1,16 @@
+FROM oven/bun:1 AS base
+WORKDIR /usr/src/app
+
+COPY package.json bun.lock ./
+# Gunakan --production agar devDependencies tidak ikut terinstall
+RUN bun install --production 
+
+COPY . .
+
+# Generate Client Prisma
+RUN bunx prisma generate
+
+EXPOSE 3000
+
+# Jalankan server tanpa mode watch (Pastikan di package.json ada script "start": "bun src/index.ts")
+CMD ["bun", "run", "src/index.ts"]
