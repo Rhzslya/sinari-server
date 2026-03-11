@@ -10,9 +10,6 @@ jobs:
   test:
     name: Run Bun Tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./server
 
     services:
       mysql:
