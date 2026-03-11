@@ -9,19 +9,18 @@ import whatsappClient from "../lib/whatsapp";
 
 export const web = new Hono();
 
-// web.use("*", secureHeaders());
+web.use("*", secureHeaders());
 
-// const allowedOrigins = [
-//   "http://localhost:5173",
-//   "https://sinari.my.id", //Your Domain
-// ];
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://sinari.my.id", //Your Domain
+];
 
 web.use(
   "/*",
   cors({
     origin: (origin) => {
-      // Izinkan semua origin dulu untuk memastikan bukan masalah CORS
-      return origin;
+      return allowedOrigins.includes(origin) ? origin : null;
     },
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -29,12 +28,12 @@ web.use(
   }),
 );
 
-// web.use(
-//   "*",
-//   csrf({
-//     origin: allowedOrigins,
-//   }),
-// );
+web.use(
+  "*",
+  csrf({
+    origin: allowedOrigins,
+  }),
+);
 
 const shutdown = async () => {
   console.log("Shutting down server...");
