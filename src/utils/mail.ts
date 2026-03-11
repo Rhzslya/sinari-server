@@ -33,6 +33,10 @@ export class Mail {
   //   return { testAccount, transporter };
   // }
 
+  private static isTestEnv(): boolean {
+    return process.env.NODE_ENV === "test";
+  }
+
   private static transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT) || 465,
@@ -76,6 +80,14 @@ export class Mail {
   }
 
   static async sendVerificationMail(request: VerificationMailRequest) {
+    if (this.isTestEnv()) {
+      console.log(
+        "[TEST ENV] Mocking Verification Email sent to:",
+        request.email,
+      );
+      return;
+    }
+
     try {
       const verificationUrl = `https://sinari.my.id/auth/verify?token=${request.token}`;
 
@@ -115,6 +127,13 @@ export class Mail {
   }
 
   static async sendPasswordResetMail(request: PasswordResetMailRequest) {
+    if (this.isTestEnv()) {
+      console.log(
+        "[TEST ENV] Mocking Password Reset Email sent to:",
+        request.email,
+      );
+      return;
+    }
     try {
       const passwordResetUrl = `https://sinari.my.id/auth/reset-password?token=${request.token}`;
 
@@ -153,6 +172,13 @@ export class Mail {
   }
 
   static async sendRestoredUser(request: UserNotificationRequest) {
+    if (this.isTestEnv()) {
+      console.log(
+        "[TEST ENV] Mocking Restore User Email sent to:",
+        request.email,
+      );
+      return;
+    }
     try {
       await this.transporter.sendMail({
         from: this.getSenderInfo(),
@@ -201,6 +227,10 @@ export class Mail {
   static async sendPasswordChangedNotification(
     request: UserNotificationRequest,
   ) {
+    if (this.isTestEnv()) {
+      console.log("[TEST ENV] Mocking Security Email sent to:", request.email);
+      return;
+    }
     try {
       await this.transporter.sendMail({
         from: this.getSenderInfo("Sinari Cell Security"),
@@ -252,6 +282,11 @@ export class Mail {
         ContactValidation.CONTACT_US,
         request,
       );
+
+      if (this.isTestEnv()) {
+        console.log("[TEST ENV] Mocking Contact Email sent to Support inbox");
+        return;
+      }
 
       const adminEmail = process.env.SMTP_USER;
 
