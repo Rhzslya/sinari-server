@@ -9,18 +9,19 @@ import whatsappClient from "../lib/whatsapp";
 
 export const web = new Hono();
 
-web.use("*", secureHeaders());
+// web.use("*", secureHeaders());
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://sinari.my.id", //Your Domain
-];
+// const allowedOrigins = [
+//   "http://localhost:5173",
+//   "https://sinari.my.id", //Your Domain
+// ];
 
 web.use(
   "/*",
   cors({
     origin: (origin) => {
-      return allowedOrigins.includes(origin) ? origin : null;
+      // Izinkan semua origin dulu untuk memastikan bukan masalah CORS
+      return origin;
     },
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
