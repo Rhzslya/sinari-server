@@ -26,6 +26,10 @@ const readRateLimiter = new Ratelimit({
 });
 const createLimiterMiddleware = (limiter: Ratelimit) => {
   return async (c: Context, next: Next) => {
+    if (process.env.NODE_ENV === "test") {
+      return next();
+    }
+
     const info = getConnInfo(c);
     const ip =
       c.req.header("x-forwarded-for")?.split(",")[0] ||
