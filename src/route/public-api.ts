@@ -12,25 +12,6 @@ import { StoreSettingController } from "../controller/store-setting-controller";
 
 export const publicRouter = new Hono();
 
-// User Public Routes
-publicRouter.post("/api/users", authLimiterMiddleware, (c) =>
-  UserController.register(c),
-);
-publicRouter.post("/api/auth/login", authLimiterMiddleware, (c) =>
-  UserController.login(c),
-);
-publicRouter.post("/api/auth/google", (c) => UserController.loginWithGoogle(c));
-publicRouter.get("/api/auth/verify", (c) => UserController.verify(c));
-publicRouter.get("/api/auth/resend-verify", (c) =>
-  UserController.resendVerification(c),
-);
-publicRouter.post("/api/auth/forgot-password", authLimiterMiddleware, (c) =>
-  UserController.forgotPassword(c),
-);
-publicRouter.patch("/api/auth/reset-password", authLimiterMiddleware, (c) =>
-  UserController.resetPassword(c),
-);
-
 // Repair Public Routes
 publicRouter.get(
   "/api/public/services/track/:identifier",
@@ -54,4 +35,23 @@ publicRouter.post("/api/public/contact-us", writeLimiterMiddleware, (c) =>
 // Store Setting Public Routes
 publicRouter.get("/api/public/store-setting", readLimiterMiddleware, (c) =>
   StoreSettingController.getPublic(c),
+);
+
+// User Public Routes
+publicRouter.post("/api/users", authLimiterMiddleware, (c) =>
+  UserController.register(c),
+);
+publicRouter.post("/api/auth/login", authLimiterMiddleware, (c) =>
+  UserController.login(c),
+);
+publicRouter.post("/api/auth/google", (c) => UserController.loginWithGoogle(c));
+publicRouter.get("/api/auth/verify", (c) => UserController.verify(c));
+publicRouter.get("/api/auth/resend-verify", (c) =>
+  UserController.resendVerification(c),
+);
+publicRouter.post("/api/auth/forgot-password", authLimiterMiddleware, (c) =>
+  UserController.forgotPassword(c),
+);
+publicRouter.patch("/api/auth/reset-password", authLimiterMiddleware, (c) =>
+  UserController.resetPassword(c),
 );

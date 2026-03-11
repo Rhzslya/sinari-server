@@ -28,12 +28,12 @@ web.use(
   }),
 );
 
-web.use(
-  "*",
-  csrf({
-    origin: allowedOrigins,
-  }),
-);
+// web.use(
+//   "*",
+//   csrf({
+//     origin: allowedOrigins,
+//   }),
+// );
 
 const shutdown = async () => {
   console.log("Shutting down server...");
