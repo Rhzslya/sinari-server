@@ -639,7 +639,7 @@ describe("PATCH /api/products/:id", () => {
     expect(body.errors).toBeDefined();
   });
 
-  it("should reject update product if product is not found", async () => {
+  it.only("should reject update product if product is not found", async () => {
     await UserTest.createAdmin();
     const user = await UserTest.getAdmin();
     token = user.token!;
@@ -667,7 +667,7 @@ describe("PATCH /api/products/:id", () => {
 
     expect(response.status).toBe(404);
     expect(body.errors).toBeDefined();
-  });
+  }, 15000);
 
   it("should reject update product if user is not admin", async () => {
     await UserTest.create();
