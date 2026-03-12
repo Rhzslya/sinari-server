@@ -44,7 +44,6 @@ export class CloudinaryService {
               crop: "pad",
               background: "white",
             },
-            { effect: "background_removal" },
             {
               quality: "auto:best",
               fetch_format: "webp",
