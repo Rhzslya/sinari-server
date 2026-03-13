@@ -32,6 +32,7 @@ import { CheckExist } from "../utils/check-exist";
 import { formatPhoneNumber } from "../utils/format-phone-number";
 import { fmt } from "../utils/format-rupiah";
 import { generateServiceId } from "../utils/id-generator";
+import { WhatsappTemplate } from "../utils/whatsapp-template";
 import { RepairValidation } from "../validation/repair-validation";
 import { Validation } from "../validation/validation";
 import { v4 as uuid } from "uuid";
@@ -131,12 +132,30 @@ export class ServicesDataService {
         technician: true,
       },
     });
+    const message = WhatsappTemplate.generateCreateMessage({
+      customer_name: service.customer_name,
+      brand: service.brand,
+      model: service.model,
+      tracking_token: service.tracking_token,
+    });
 
-    const trackingUrl = `http://sinari.my.id/services/track/${service.tracking_token}`;
-    const message = `Halo ${service.customer_name} Your service has been created. Please track it here: ${trackingUrl}`;
+    try {
+      console.log(
+        `[WA] Mengirim nota digital awal ke ${service.phone_number}...`,
+      );
+      const whatsappResult = await WhatsappService.sendMessage(
+        service.phone_number,
+        message,
+      );
 
-    await WhatsappService.sendMessage(service.phone_number, message);
-    console.log("SENDING WA TO", service.phone_number, message);
+      if (!whatsappResult.success) {
+        console.error("[WA] Gagal mengirim pesan awal:", whatsappResult.error);
+      } else {
+        console.log("[WA] Berhasil mengirim pesan awal!");
+      }
+    } catch (error) {
+      console.error("[WA] Terjadi error sistem saat kirim WA awal:", error);
+    }
 
     return toServiceResponse(service);
   }
@@ -546,32 +565,44 @@ export class ServicesDataService {
     let whatsappMeta: {
       wa_status: "skipped" | "sent" | "failed";
       message?: string;
-    } = {
-      wa_status: "skipped",
-      message: "",
-    };
+    } = { wa_status: "skipped", message: "Status not updated, Skipped" };
+
     if (updateRequest.status && updateRequest.status !== oldService.status) {
-      const trackingUrl = `https://sinari.com/services/track?token=${service.tracking_token}`;
-      const message = `Halo ${service.customer_name}...\nLink: ${trackingUrl}`;
+      const message = WhatsappTemplate.generateUpdateMessage({
+        customer_name: service.customer_name,
+        brand: service.brand,
+        model: service.model,
+        tracking_token: service.tracking_token,
+        status: service.status,
+      });
 
-      // const whatsappResult = await WhatsappService.sendMessage(
-      //   service.phone_number,
-      //   message,
-      // );
+      try {
+        console.log(
+          `[WA] Mengirim notifikasi update status ke ${service.phone_number}...`,
+        );
 
-      // if (whatsappResult.success) {
-      //   whatsappMeta = {
-      //     wa_status: "sent",
-      //     message: "Notifikasi WA berhasil terkirim",
-      //   };
-      // } else {
-      //   whatsappMeta = {
-      //     wa_status: "failed",
-      //     message: whatsappResult.error || "Unknown error",
-      //   };
-      // }
+        const whatsappResult = await WhatsappService.sendMessage(
+          service.phone_number,
+          message,
+        );
 
-      console.log("SENDING WA TO", service.phone_number, message);
+        if (!whatsappResult.success) {
+          console.error("[WA] Gagal mengirim pesan:", whatsappResult.error);
+          whatsappMeta = { wa_status: "failed", message: whatsappResult.error };
+        } else {
+          console.log("[WA] Berhasil mengirim pesan update!");
+          whatsappMeta = {
+            wa_status: "sent",
+            message: "Notifikasi WA berhasil terkirim",
+          };
+        }
+      } catch (error) {
+        console.error("[WA] Terjadi error sistem saat mengirim WA:", error);
+        whatsappMeta = {
+          wa_status: "failed",
+          message: "Internal Server Error saat mengirim WA",
+        };
+      }
     }
 
     return {

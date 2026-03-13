@@ -1520,6 +1520,7 @@ describe("PATCH /api/users/:id/restore", () => {
       await ProductTest.delete();
       await ServiceTest.deleteAll();
       await TechnicianTest.delete();
+      await UserTest.delete();
     });
 
     afterEach(async () => {
