@@ -13,6 +13,7 @@ web.use("*", secureHeaders());
 
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:4173",
   "https://sinari.my.id", //Your Domain
 ];
 

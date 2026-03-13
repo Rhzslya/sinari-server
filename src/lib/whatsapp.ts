@@ -44,12 +44,8 @@ const cleanStore = () => {
 
 cleanStore();
 
-const whatsappClient = new Client({
-  authStrategy: new LocalAuth({
-    clientId: CLIENT_ID,
-    dataPath: SESSION_PATH,
-  }),
-  puppeteer: {
+const getPuppeteerConfig = (): ClientOptions["puppeteer"] => {
+  const config: ClientOptions["puppeteer"] = {
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -58,9 +54,24 @@ const whatsappClient = new Client({
       "--disable-extensions",
       "--no-first-run",
       "--no-zygote",
+      "--single-process",
     ],
     headless: true,
-  } as ClientOptions["puppeteer"],
+  };
+
+  if (fs.existsSync("/usr/bin/chromium")) {
+    config.executablePath = "/usr/bin/chromium";
+  }
+
+  return config;
+};
+
+const whatsappClient = new Client({
+  authStrategy: new LocalAuth({
+    clientId: CLIENT_ID,
+    dataPath: SESSION_PATH,
+  }),
+  puppeteer: getPuppeteerConfig(),
 });
 
 whatsappClient.on("qr", async (qr) => {
