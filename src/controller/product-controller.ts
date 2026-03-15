@@ -150,22 +150,7 @@ export class ProductController {
 
   static async search(c: Context) {
     try {
-      let user: User | null = null;
-
-      const authHeader = c.req.header("Authorization");
-
-      if (authHeader) {
-        const token = authHeader.split(" ")[1];
-        if (token) {
-          user = await prismaClient.user.findFirst({
-            where: { token: token },
-          });
-
-          if (!user) {
-            throw new ResponseError(401, "Unauthorized: Invalid Token");
-          }
-        }
-      }
+      const user = c.var.user as User;
 
       const request: SearchProductRequest = {
         name: c.req.query("name"),
