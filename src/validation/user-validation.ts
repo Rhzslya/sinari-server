@@ -94,6 +94,21 @@ export class UserValidation {
     password: z.string().min(8, "Password is required"),
   });
 
+  static readonly VERIFY_OTP = z.object({
+    user_id: z.number().int().positive("Invalid User ID"),
+    otp_code: z
+      .string()
+      .length(6, "OTP code must be exactly 6 characters")
+      .regex(
+        /^[A-Z0-9]+$/,
+        "OTP code must contain only uppercase letters and numbers",
+      ),
+  });
+
+  static readonly RESEND_OTP = z.object({
+    user_id: z.number().int().positive("Invalid User ID"),
+  });
+
   static readonly FORGOT_PASSWORD = z.object({
     identifier: z
       .string()

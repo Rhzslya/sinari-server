@@ -2,6 +2,7 @@ import { ResponseError } from "../error/response-error";
 import nodemailer from "nodemailer";
 import {
   type ContactUsRequest,
+  type OtpMailRequest,
   type PasswordResetMailRequest,
   type UserNotificationRequest,
   type VerificationMailRequest,
@@ -55,10 +56,16 @@ export class Mail {
       const mailError = error as NodemailerCustomError;
       console.error("[MAIL ERROR DETAILS]:", mailError.message);
 
-      if (mailError.responseCode === 550 || mailError.code === "EENVELOPE") {
+      if (
+        mailError.responseCode === 550 ||
+        mailError.responseCode === 553 ||
+        mailError.code === "EENVELOPE" ||
+        mailError.code === "EDNS" ||
+        mailError.message.includes("Greeting never received")
+      ) {
         throw new ResponseError(
           400,
-          "Invalid or unreachable email address. Please verify your input.",
+          "Invalid or unreachable email address. Please check your email input.",
         );
       }
 
@@ -358,6 +365,52 @@ export class Mail {
         throw error;
       }
       this.handleMailError(error, "Failed to send contact message");
+    }
+  }
+
+  static async sendOtpMail(request: OtpMailRequest) {
+    if (this.isTestEnv()) {
+      console.log(
+        `[TEST ENV] Mocking OTP Email sent to: ${request.email}. Code: ${request.otp}`,
+      );
+      return;
+    }
+
+    try {
+      await this.transporter.sendMail({
+        from: this.getSenderInfo("Sinari Cell Security"),
+        to: request.email,
+        subject: "Kode OTP Login - Sinari Cell",
+        html: `
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
+          <div style="background-color: #f8fafc; padding: 20px 24px; border-bottom: 1px solid #e2e8f0;">
+            <div style="font-size: 12px; font-weight: bold; color: ${PRIMARY_COLOR}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Keamanan Akun</div>
+            <div style="font-size: 20px; font-weight: bold; color: #0f172a;">Kode OTP Verifikasi Login</div>
+          </div>
+          <div style="padding: 24px;">
+            <p style="margin-top: 0; font-size: 16px;">Halo <strong>${request.name}</strong>,</p>
+            <p style="line-height: 1.6;">Seseorang sedang mencoba masuk ke akun Sinari Cell Anda. Silakan gunakan kode OTP 6-karakter di bawah ini untuk melanjutkan login:</p>
+            
+            <div style="margin: 30px 0; text-align: center;">
+              <div style="display: inline-block; background-color: #f1f5f9; border: 1px dashed #cbd5e1; color: #0f172a; padding: 16px 32px; border-radius: 6px; font-weight: bold; font-size: 28px; letter-spacing: 4px;">
+                 ${request.otp}
+              </div>
+            </div>
+            
+            <p style="font-size: 13px; color: #ef4444; line-height: 1.5; margin-bottom: 10px;">
+              <strong>PENTING:</strong> Kode ini hanya berlaku selama 5 menit. Jangan pernah memberikan kode ini kepada siapapun, termasuk pihak yang mengaku dari Sinari Cell.
+            </p>
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 0;">
+              Jika Anda tidak sedang mencoba masuk, abaikan email ini atau segera ubah kata sandi Anda.
+            </p>
+          </div>
+        </div>
+        `,
+      });
+
+      console.log("OTP Email sent to: %s", request.email);
+    } catch (error) {
+      this.handleMailError(error, "Failed to send OTP email");
     }
   }
 }

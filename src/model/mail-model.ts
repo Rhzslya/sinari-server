@@ -26,3 +26,9 @@ export type UserNotificationRequest = {
   email: string;
   name: string;
 };
+
+export type OtpMailRequest = {
+  email: string;
+  name: string;
+  otp: string;
+};

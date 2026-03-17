@@ -29,11 +29,15 @@ import {
   toResetPasswordResponse,
   type GetDetailedUserRequest,
   type ResendVerificationRequest,
-  type CheckUserExistsRequest,
   maskEmail,
   type ChangePasswordRequest,
   type ChangePasswordResponse,
   toChangePasswordResponse,
+  type OtpResponse,
+  type OtpLoginRequest,
+  type ResendOtpRequest,
+  type ResendOtpResponse,
+  toResendOtpResponse,
 } from "../model/user-model";
 import { GoogleAuth } from "../utils/google-auth";
 import { UserValidation } from "../validation/user-validation";
@@ -50,6 +54,9 @@ import { Mail } from "../utils/mail";
 import { sign } from "hono/jwt";
 import type { Pageable } from "../model/page-model";
 import { redis } from "../lib/redis";
+import { generateOtp } from "../utils/id-generator";
+import { CheckExist } from "../utils/check-exist";
+import { v4 as uuidv4 } from "uuid";
 
 export class UserService {
   static async register(request: CreateUserRequest): Promise<UserResponse> {
@@ -124,7 +131,9 @@ export class UserService {
     return toUserResponse(user);
   }
 
-  static async login(request: LoginUserRequest): Promise<UserResponse> {
+  static async login(
+    request: LoginUserRequest & { device_token?: string },
+  ): Promise<OtpResponse> {
     const loginRequest = Validation.validate(UserValidation.LOGIN, request);
 
     let user = await prismaClient.user.findFirst({
@@ -169,6 +178,116 @@ export class UserService {
       );
     }
 
+    if (request.device_token) {
+      const trustedDevice = await prismaClient.trustedDevice.findFirst({
+        where: {
+          user_id: user.id,
+          device_token: request.device_token,
+          expires_at: { gt: new Date() },
+        },
+      });
+
+      if (trustedDevice) {
+        const payload = {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          name: user.name,
+          email: user.email,
+          exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+        };
+
+        const jwtToken = await sign(payload, process.env.JWT_SECRET!);
+        const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        await prismaClient.user.update({
+          where: { id: user.id },
+          data: { token: jwtToken, token_expired_at: expiredAt },
+        });
+
+        return {
+          message: "Login successful from trusted device.",
+          user_id: user.id,
+          requires_otp: false,
+          token: jwtToken,
+        };
+      }
+    }
+
+    const otpCode = generateOtp();
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await prismaClient.user.update({
+      where: { id: user.id },
+      data: {
+        otp_code: otpCode,
+        otp_expires_at: otpExpiresAt,
+        otp_failed_attempts: 0,
+      },
+    });
+
+    await Mail.sendOtpMail({
+      email: user.email,
+      name: user.name,
+      otp: otpCode,
+    });
+
+    return {
+      message:
+        "Login credentials valid. Please enter the OTP sent to your email.",
+      user_id: user.id,
+      requires_otp: true,
+    };
+  }
+
+  static async verifyOtp(request: OtpLoginRequest): Promise<UserResponse> {
+    const verifyRequest = Validation.validate(
+      UserValidation.VERIFY_OTP,
+      request,
+    );
+
+    const user = await prismaClient.user.findUnique({
+      where: { id: verifyRequest.user_id },
+    });
+
+    if (!user) throw new ResponseError(404, "User not found");
+
+    if (!user.otp_code || !user.otp_expires_at) {
+      throw new ResponseError(400, "No active OTP found. Please login again.");
+    }
+
+    if (user.otp_expires_at && new Date() > user.otp_expires_at) {
+      throw new ResponseError(400, "OTP has expired. Please login again.");
+    }
+
+    if (user.otp_code !== verifyRequest.otp_code) {
+      const attempts = user.otp_failed_attempts + 1;
+
+      if (attempts >= 3) {
+        await prismaClient.user.update({
+          where: { id: user.id },
+          data: {
+            otp_code: null,
+            otp_expires_at: null,
+            otp_failed_attempts: 0,
+          },
+        });
+        throw new ResponseError(
+          403,
+          "Too many failed attempts. Your OTP has been invalidated. Please log in again.",
+        );
+      } else {
+        await prismaClient.user.update({
+          where: { id: user.id },
+          data: { otp_failed_attempts: attempts },
+        });
+        throw new ResponseError(
+          400,
+          `Invalid OTP code. ${3 - attempts} attempt(s) remaining.`,
+        );
+      }
+    }
+
     const payload = {
       id: user.id,
       username: user.username,
@@ -179,36 +298,76 @@ export class UserService {
     };
 
     const jwtToken = await sign(payload, process.env.JWT_SECRET!);
-
     const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    user = await prismaClient.user.update({
-      where: {
-        id: user.id,
+    const newDeviceToken = uuidv4();
+    const deviceExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    await prismaClient.trustedDevice.create({
+      data: {
+        user_id: user.id,
+        device_token: newDeviceToken,
+        expires_at: deviceExpiresAt,
       },
+    });
+
+    const updatedUser = await prismaClient.user.update({
+      where: { id: user.id },
       data: {
         token: jwtToken,
         token_expired_at: expiredAt,
-        password_reset_token: null,
-        password_reset_expires_at: null,
+        otp_code: null,
+        otp_expires_at: null,
+        otp_failed_attempts: 0,
       },
     });
 
-    const response = toUserResponse({ ...user, token: jwtToken });
-    return response;
+    return {
+      ...toUserResponse({ ...updatedUser, token: jwtToken }),
+      token: jwtToken,
+      device_token: newDeviceToken,
+    };
   }
 
-  static async checkUserExists(id: number): Promise<User> {
+  static async resendOtp(
+    request: ResendOtpRequest,
+  ): Promise<ResendOtpResponse> {
+    const resendRequest = Validation.validate(
+      UserValidation.RESEND_OTP,
+      request,
+    );
+
     const user = await prismaClient.user.findUnique({
-      where: {
-        id: id,
-        deleted_at: null,
+      where: { id: resendRequest.user_id },
+    });
+
+    if (!user) throw new ResponseError(404, "User not found");
+
+    if (user.deleted_at !== null)
+      throw new ResponseError(
+        403,
+        "Access denied. Your account is no longer active.",
+      );
+
+    const otpCode = generateOtp();
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await prismaClient.user.update({
+      where: { id: user.id },
+      data: {
+        otp_code: otpCode,
+        otp_expires_at: otpExpiresAt,
+        otp_failed_attempts: 0,
       },
     });
-    if (!user) {
-      throw new ResponseError(404, "User not found");
-    }
-    return user;
+
+    await Mail.sendOtpMail({
+      email: user.email,
+      name: user.name,
+      otp: otpCode,
+    });
+
+    return toResendOtpResponse();
   }
 
   static async get(user: User): Promise<UserResponse> {
@@ -227,7 +386,7 @@ export class UserService {
       throw new ResponseError(403, "Forbidden: Insufficient permissions");
     }
 
-    const targetUser = await this.checkUserExists(request.id);
+    const targetUser = await CheckExist.checkUserExist({ id: request.id });
 
     const isOnlineCheck = await redis.exists(`online_users:${targetUser.id}`);
 

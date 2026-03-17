@@ -50,10 +50,28 @@ model User {
   service_logs ServiceLog[]
   product_logs ProductLog[]
 
+  otp_code         String?
+  otp_expires_at   DateTime?
+  otp_failed_attempts Int       @default(0)
+
+
   deleted_at DateTime?
 
+  trusted_devices TrustedDevice[] 
 
   @@map("users")
+}
+
+model TrustedDevice {
+  id           Int      @id @default(autoincrement())
+  user_id      Int
+  device_token String   @unique
+  expires_at   DateTime
+  created_at   DateTime @default(now())
+
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("trusted_devices")
 }
 
 model Technician {
@@ -261,7 +279,7 @@ model StoreSetting {
   store_website   String?  @db.VarChar(100)
   warranty_text   String   @db.Text
   payment_info    String   @db.Text
-  store_hours     String  @db.Text
+  store_hours     String   @db.Text
   updated_at      DateTime @updatedAt
 
   @@map("store_settings")

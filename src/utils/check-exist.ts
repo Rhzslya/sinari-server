@@ -3,6 +3,7 @@ import type {
   Service,
   ServiceItem,
   Technician,
+  User,
 } from "../../generated/prisma/client";
 import { prismaClient } from "../application/database";
 import { ResponseError } from "../error/response-error";
@@ -55,9 +56,7 @@ export class CheckExist {
     return service;
   }
 
-  static async checkUserExist(
-    request: CheckUserExistsRequest,
-  ): Promise<UserResponse> {
+  static async checkUserExist(request: CheckUserExistsRequest): Promise<User> {
     const user = await prismaClient.user.findUnique({
       where: {
         id: request.id,

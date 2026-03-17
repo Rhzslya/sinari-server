@@ -327,6 +327,14 @@ export class UserTest {
   }
 }
 
+export class TrustedDeviceTest {
+  static async delete() {
+    await prismaClient.trustedDevice.deleteMany({
+      where: {},
+    });
+  }
+}
+
 export class ServiceTest {
   static async deleteAll() {
     await prismaClient.service.deleteMany({
@@ -528,12 +536,13 @@ export class TestRequest {
     url: string,
     body: T,
     token?: string,
+    customHeaders?: Record<string, string>,
   ): Promise<Response> {
     return web.request(
       url,
       {
         method: "POST",
-        headers: this.makeHeaders(token),
+        headers: this.makeHeaders(token, customHeaders),
         body: JSON.stringify(body),
       },
       this.createMockEnv(),

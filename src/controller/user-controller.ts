@@ -1,11 +1,12 @@
 import type { Context } from "hono";
-import { deleteCookie, setCookie } from "hono/cookie";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type {
   ChangePasswordRequest,
   CreateUserRequest,
   CreateUserWithGoogleRequest,
   ForgotPasswordRequest,
   LoginUserRequest,
+  OtpLoginRequest,
   ResetPasswordRequest,
   SearchUserRequest,
   UpdateRoleRequest,
@@ -33,10 +34,42 @@ export class UserController {
     try {
       const request = (await c.req.json()) as LoginUserRequest;
 
-      const response = await UserService.login(request);
+      const deviceToken = getCookie(c, "trusted_device");
 
-      if (!response.token) {
-        throw new ResponseError(500, "Failed to generate authentication token");
+      const response = await UserService.login({
+        ...request,
+        device_token: deviceToken,
+      });
+
+      if (!response.requires_otp && response.token) {
+        setCookie(c, "auth_token", response.token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "Strict",
+          maxAge: 60 * 60 * 24,
+          path: "/",
+        });
+
+        const { token, ...safeResponse } = response;
+        return c.json({ data: safeResponse });
+      }
+
+      return c.json({ data: response });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async verifyOtp(c: Context) {
+    try {
+      const request = (await c.req.json()) as OtpLoginRequest;
+      const response = await UserService.verifyOtp(request);
+
+      if (!response.token || !response.device_token) {
+        throw new ResponseError(
+          500,
+          "Failed to generate authentication tokens",
+        );
       }
 
       setCookie(c, "auth_token", response.token, {
@@ -47,9 +80,27 @@ export class UserController {
         path: "/",
       });
 
-      const { token, ...safeResponse } = response;
+      setCookie(c, "trusted_device", response.device_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Strict",
+        maxAge: 30 * 24 * 60 * 60,
+        path: "/",
+      });
+
+      const { token, device_token, ...safeResponse } = response;
 
       return c.json({ data: safeResponse });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async resendOtp(c: Context) {
+    try {
+      const request = await c.req.json();
+      const response = await UserService.resendOtp(request);
+      return c.json({ data: response });
     } catch (error) {
       throw error;
     }

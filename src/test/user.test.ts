@@ -6,6 +6,7 @@ import {
   ServiceTest,
   TechnicianTest,
   TestRequest,
+  TrustedDeviceTest,
   UserTest,
 } from "./test-utils";
 import { logger } from "../application/logging";
@@ -203,9 +204,10 @@ describe("POST /api/auth/login", () => {
   afterEach(async () => {
     await UserTest.delete();
     await UserTest.deleteGoogleDuplicate();
+    await TrustedDeviceTest.delete();
   });
 
-  it("should login user if email and password is correct and verify user", async () => {
+  it("should successfully validate credentials and require OTP (using email)", async () => {
     const requestBody: LoginUserRequest = {
       identifier: "test_customer@gmail.com",
       password: "@Adm1n5123",
@@ -218,15 +220,12 @@ describe("POST /api/auth/login", () => {
 
     const body = await response.json();
 
-    logger.debug(body);
-
     expect(response.status).toBe(200);
-    expect(body.data.email).toBe("test_customer@gmail.com");
-    expect(body.data.username).toBe("test_customer");
-    expect(body.data.name).toBe("test");
+    expect(body.data.requires_otp).toBe(true);
+    expect(body.data.user_id).toBeDefined();
   });
 
-  it("should login user if username and password is correct", async () => {
+  it("should successfully validate credentials and require OTP (using username)", async () => {
     const requestBody: LoginUserRequest = {
       identifier: "test_customer",
       password: "@Adm1n5123",
@@ -239,12 +238,46 @@ describe("POST /api/auth/login", () => {
 
     const body = await response.json();
 
-    logger.debug(body);
+    expect(response.status).toBe(200);
+    expect(body.data.requires_otp).toBe(true);
+    expect(body.data.user_id).toBeDefined();
+  });
+
+  it("should bypass OTP and return token directly if using a valid trusted_device cookie", async () => {
+    const user = await prismaClient.user.findFirst({
+      where: { email: "test_customer@gmail.com" },
+    });
+
+    const mockDeviceToken = "mock-uuid-token-123";
+    await prismaClient.trustedDevice.create({
+      data: {
+        user_id: user!.id,
+        device_token: mockDeviceToken,
+        expires_at: new Date(Date.now() + 1000000),
+      },
+    });
+
+    const requestBody: LoginUserRequest = {
+      identifier: "test_customer@gmail.com",
+      password: "@Adm1n5123",
+    };
+
+    const response = await TestRequest.post<LoginUserRequest>(
+      "/api/auth/login",
+      requestBody,
+      undefined,
+      { Cookie: `trusted_device=${mockDeviceToken}` },
+    );
+
+    const body = await response.json();
+    const setCookieHeader = response.headers.get("set-cookie");
 
     expect(response.status).toBe(200);
-    expect(body.data.email).toBe("test_customer@gmail.com");
-    expect(body.data.username).toBe("test_customer");
-    expect(body.data.name).toBe("test");
+    expect(body.data.requires_otp).toBe(false);
+    expect(body.data.message).toContain("trusted device");
+
+    expect(setCookieHeader).toBeDefined();
+    expect(setCookieHeader).toContain("auth_token=");
   });
 
   it("should reject login if email is not verified", async () => {
@@ -366,6 +399,204 @@ describe("POST /api/auth/login", () => {
     logger.debug(body);
 
     expect(response.status).toBe(400);
+    expect(body.errors).toBeDefined();
+  });
+});
+
+describe("POST /api/auth/verify-otp", () => {
+  beforeEach(async () => {
+    await UserTest.create();
+  });
+
+  afterEach(async () => {
+    await UserTest.delete();
+    await TrustedDeviceTest.delete();
+  });
+
+  it("should return token and set trusted_device cookie if OTP is correct", async () => {
+    const loginResponse = await TestRequest.post("/api/auth/login", {
+      identifier: "test_customer@gmail.com",
+      password: "@Adm1n5123",
+    });
+    const loginBody = await loginResponse.json();
+    const userId = loginBody.data.user_id;
+
+    const user = await prismaClient.user.findUnique({ where: { id: userId } });
+    const otpCode = user?.otp_code;
+
+    const verifyResponse = await TestRequest.post("/api/auth/verify-otp", {
+      user_id: userId,
+      otp_code: otpCode,
+    });
+    const verifyBody = await verifyResponse.json();
+
+    expect(verifyResponse.status).toBe(200);
+
+    const setCookieHeader = verifyResponse.headers.get("set-cookie");
+
+    expect(setCookieHeader).toBeDefined();
+    expect(setCookieHeader).toContain("auth_token=");
+    expect(setCookieHeader).toContain("trusted_device=");
+
+    expect(verifyBody.data.email).toBe("test_customer@gmail.com");
+    expect(verifyBody.data.username).toBe("test_customer");
+
+    const trustedDeviceCount = await prismaClient.trustedDevice.count({
+      where: { user_id: userId },
+    });
+    expect(trustedDeviceCount).toBe(1);
+  });
+
+  it("should increment failed attempts and reject if OTP is incorrect", async () => {
+    const loginResponse = await TestRequest.post("/api/auth/login", {
+      identifier: "test_customer@gmail.com",
+      password: "@Adm1n5123",
+    });
+    const loginBody = await loginResponse.json();
+    const userId = loginBody.data.user_id;
+
+    const verifyResponse = await TestRequest.post("/api/auth/verify-otp", {
+      user_id: userId,
+      otp_code: "WRONG1",
+    });
+    const body = await verifyResponse.json();
+
+    expect(verifyResponse.status).toBe(400);
+    expect(body.errors).toContain("2 attempt(s) remaining");
+
+    const checkUser = await prismaClient.user.findUnique({
+      where: { id: userId },
+    });
+    expect(checkUser?.otp_failed_attempts).toBe(1);
+  });
+
+  it("should invalidate OTP after 3 failed attempts", async () => {
+    const loginResponse = await TestRequest.post("/api/auth/login", {
+      identifier: "test_customer@gmail.com",
+      password: "@Adm1n5123",
+    });
+    const loginBody = await loginResponse.json();
+    const userId = loginBody.data.user_id;
+
+    await TestRequest.post("/api/auth/verify-otp", {
+      user_id: userId,
+      otp_code: "WRONG1",
+    });
+    await TestRequest.post("/api/auth/verify-otp", {
+      user_id: userId,
+      otp_code: "WRONG2",
+    });
+
+    const verifyResponse3 = await TestRequest.post("/api/auth/verify-otp", {
+      user_id: userId,
+      otp_code: "WRONG3",
+    });
+    const body3 = await verifyResponse3.json();
+
+    expect(verifyResponse3.status).toBe(403);
+    expect(body3.errors).toContain("Too many failed attempts");
+
+    const checkUser = await prismaClient.user.findUnique({
+      where: { id: userId },
+    });
+    expect(checkUser?.otp_code).toBeNull();
+    expect(checkUser?.otp_failed_attempts).toBe(0);
+  });
+
+  it("should reject if OTP is incorrect", async () => {
+    const loginResponse = await TestRequest.post("/api/auth/login", {
+      identifier: "test_customer@gmail.com",
+      password: "@Adm1n5123",
+    });
+    const loginBody = await loginResponse.json();
+
+    const verifyResponse = await TestRequest.post("/api/auth/verify-otp", {
+      user_id: loginBody.data.user_id,
+      otp_code: "WRONG_OTP",
+    });
+    const body = await verifyResponse.json();
+
+    expect(verifyResponse.status).toBe(400);
+    expect(body.errors).toBeDefined();
+  });
+
+  it("should reject if OTP is expired", async () => {
+    const loginResponse = await TestRequest.post("/api/auth/login", {
+      identifier: "test_customer@gmail.com",
+      password: "@Adm1n5123",
+    });
+    const loginBody = await loginResponse.json();
+    const userId = loginBody.data.user_id;
+
+    const user = await prismaClient.user.findUnique({ where: { id: userId } });
+
+    await prismaClient.user.update({
+      where: { id: userId },
+      data: { otp_expires_at: new Date(Date.now() - 10000) },
+    });
+
+    const verifyResponse = await TestRequest.post("/api/auth/verify-otp", {
+      user_id: userId,
+      otp_code: user?.otp_code,
+    });
+    const body = await verifyResponse.json();
+
+    expect(verifyResponse.status).toBe(400);
+    expect(body.errors).toBeDefined();
+  });
+});
+
+describe("POST /api/auth/resend-otp", () => {
+  beforeEach(async () => {
+    await UserTest.create();
+  });
+
+  afterEach(async () => {
+    await UserTest.delete();
+  });
+
+  it("should successfully generate a new OTP and reset failed attempts", async () => {
+    const loginResponse = await TestRequest.post("/api/auth/login", {
+      identifier: "test_customer@gmail.com",
+      password: "@Adm1n5123",
+    });
+    const loginBody = await loginResponse.json();
+    const userId = loginBody.data.user_id;
+
+    await TestRequest.post("/api/auth/verify-otp", {
+      user_id: userId,
+      otp_code: "WRONG_OTP",
+    });
+
+    const oldUser = await prismaClient.user.findUnique({
+      where: { id: userId },
+    });
+    const oldOtpCode = oldUser?.otp_code;
+
+    const resendResponse = await TestRequest.post("/api/auth/resend-otp", {
+      user_id: userId,
+    });
+
+    const body = await resendResponse.json();
+
+    expect(resendResponse.status).toBe(200);
+
+    const checkUser = await prismaClient.user.findUnique({
+      where: { id: userId },
+    });
+
+    expect(checkUser?.otp_code).toBeDefined();
+    expect(checkUser?.otp_code).not.toBe(oldOtpCode);
+    expect(checkUser?.otp_failed_attempts).toBe(0);
+  });
+
+  it("should reject if user is not found", async () => {
+    const response = await TestRequest.post("/api/auth/resend-otp", {
+      user_id: 999999,
+    });
+
+    const body = await response.json();
+    expect(response.status).toBe(404);
     expect(body.errors).toBeDefined();
   });
 });

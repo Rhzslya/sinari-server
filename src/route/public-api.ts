@@ -44,6 +44,14 @@ publicRouter.post("/api/users", authLimiterMiddleware, (c) =>
 publicRouter.post("/api/auth/login", authLimiterMiddleware, (c) =>
   UserController.login(c),
 );
+publicRouter.post("/api/auth/verify-otp", authLimiterMiddleware, (c) =>
+  UserController.verifyOtp(c),
+);
+
+publicRouter.post("/api/auth/resend-otp", authLimiterMiddleware, (c) =>
+  UserController.resendOtp(c),
+);
+
 publicRouter.post("/api/auth/google", (c) => UserController.loginWithGoogle(c));
 publicRouter.get("/api/auth/verify", (c) => UserController.verify(c));
 publicRouter.get("/api/auth/resend-verify", (c) =>

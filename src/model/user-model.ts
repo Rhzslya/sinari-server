@@ -8,6 +8,7 @@ export type UserResponse = {
   role: UserRole;
   token?: string | null;
   google_id?: string | null;
+  device_token?: string;
 };
 
 export type NotPublicUserResponse = {
@@ -46,6 +47,13 @@ export type DetailedUserResponse = {
 
 export type MessageResponse = {
   message: string;
+};
+
+export type OtpResponse = {
+  user_id: number;
+  message: string;
+  requires_otp: boolean;
+  token?: string;
 };
 
 export type CreateUserRequest = {
@@ -151,6 +159,19 @@ export type ResendVerificationRequest = {
   identifier: string;
 };
 
+export type OtpLoginRequest = {
+  user_id: number;
+  otp_code: string;
+};
+
+export type ResendOtpRequest = {
+  user_id: number;
+};
+
+export type ResendOtpResponse = {
+  message: string;
+};
+
 export function toUserResponse(user: User): UserResponse {
   return {
     id: user.id,
@@ -234,6 +255,12 @@ export function toResetPasswordResponse(): ResetPasswordResponse {
   return {
     message:
       "Password has been successfully reset. Please login with your new password.",
+  };
+}
+
+export function toResendOtpResponse(): ResendOtpResponse {
+  return {
+    message: "OTP has been sent to your email.",
   };
 }
 
