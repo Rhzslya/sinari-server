@@ -78,3 +78,27 @@ jobs:
           GOOGLE_CLIENT_ID: dummy
           GOOGLE_CLIENT_SECRET: dummy
           GOOGLE_REDIRECT_URI: http://localhost/dummy
+
+      - name: Deploy to VPS (Continuous Deployment)
+        if: success() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # 1. Masuk ke folder aplikasi di VPS (Sesuaikan dengan path foldermu!)
+            cd ~/Seira/sinari-app/server
+            git pull origin main
+
+            # 2. Mundur satu path untuk menjalankan docker compose
+            cd ~/Seira/sinari-app
+
+            # 3. Build ulang image dan nyalakan container di background
+            docker compose up -d --build server
+
+            # 4. Jalankan migrasi database dengan aman
+            docker compose run --rm server bunx prisma migrate deploy
+
+            # 5. Restart server untuk memastikan koneksi database dan env baru terbaca
+            docker compose restart server
