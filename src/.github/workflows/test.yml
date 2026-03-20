@@ -71,6 +71,7 @@ jobs:
       - name: Run Tests
         run: bun test --serial --concurrency 1
         env:
+          NODE_ENV: test
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}

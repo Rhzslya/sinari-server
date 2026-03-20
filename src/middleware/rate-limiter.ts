@@ -26,8 +26,9 @@ const readRateLimiter = new Ratelimit({
 });
 const createLimiterMiddleware = (limiter: Ratelimit) => {
   return async (c: Context, next: Next) => {
-    if (process.env.NODE_ENV === "test") {
-      return next();
+    if (process.env.NODE_ENV === "test" || process.env.CI === "true") {
+      await next();
+      return;
     }
 
     const info = getConnInfo(c);
