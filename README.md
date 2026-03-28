@@ -7,7 +7,7 @@
 ![MariaDB](https://img.shields.io/badge/MariaDB-003545?style=for-the-badge&logo=mariadb&logoColor=white)
 ![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=for-the-badge&logo=redis&logoColor=white)
 
-This is the backend API for **Sinari** (Fullstack Store Management & Service Tracking application). Built with a focus on high performance, strict type safety, clean architecture, and automated customer communication using modern web technologies.
+This is the backend API for **Sinari**. Built with a focus on high performance, strict type safety, clean architecture, and automated customer communication using modern web technologies.
 
 ## Tech Stack
 
