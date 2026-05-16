@@ -6,10 +6,12 @@ import { publicRouter } from "../route/public-api";
 import { errorMiddleware } from "../middleware/error-middleware";
 import { apiRouter } from "../route/api";
 import whatsappClient from "../lib/whatsapp";
+import { logger } from "hono/logger";
 
 export const web = new Hono();
 
 web.use("*", secureHeaders());
+web.use("*", logger());
 
 const allowedOrigins = [
   "http://localhost:5173",
